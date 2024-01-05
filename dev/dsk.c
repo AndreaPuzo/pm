@@ -133,12 +133,59 @@ void pm_dev_dsk_clk (struct pm_dev_dsk_t * dsk)
 
 void pm_dev_dsk_stb (struct pm_dev_dsk_t * dsk, u_word_t adr, u_byte_t dat)
 {
-  
+  switch (adr) {
+  case 0x00 :
+    /* fallthrough */
+  case 0x04 :
+    /* fallthrough */
+  case 0x08 :
+    /* fallthrough */
+  case 0x0C :
+    /* fallthrough */
+  case 0x10 : {
+    /* ignored */
+  } break ;
+
+  default : {
+    if (0x100 < adr)
+      break ;
+
+    dsk->buf[adr & 0x1FF] = dat ;
+  } break ;
+  }
 }
 
 void pm_dev_dsk_sth (struct pm_dev_dsk_t * dsk, u_word_t adr, u_half_t dat)
 {
+  if (0 != (adr & 0x1))
+    return ;
 
+  switch (adr) {
+  case 0x00 :
+    /* fallthrough */
+  case 0x04 :
+    /* fallthrough */
+  case 0x08 :
+    /* fallthrough */
+  case 0x0C :
+    /* fallthrough */
+  case 0x10 : {
+    /* ignored */
+  } break ;
+
+  default : {
+    if (0x100 < adr)
+      break ;
+
+    adr &= 0x1FF ;
+    
+    if (__PM_ENDIAN_LE == dsk->bo) {
+      _sth_le(dsk->buf + adr, dat) ;
+    } else {
+      _sth_be(dsk->buf + adr, dat) ;
+    }
+  } break ;
+  }
 }
 
 void pm_dev_dsk_stw (struct pm_dev_dsk_t * dsk, u_word_t adr, u_word_t dat)
@@ -166,6 +213,10 @@ void pm_dev_dsk_stw (struct pm_dev_dsk_t * dsk, u_word_t adr, u_word_t dat)
   } break ;
 
   case 0x0C : {
+    dsk->bo = (0 == dat) ? __PM_ENDIAN_LE : __PM_ENDIAN_BE ;
+  } break ;
+
+  case 0x10 : {
     _dev_dsk_stsec(dsk) ;
   } break ;
 
@@ -175,25 +226,126 @@ void pm_dev_dsk_stw (struct pm_dev_dsk_t * dsk, u_word_t adr, u_word_t dat)
 
     adr &= 0x1FF ;
     
-
-
+    if (__PM_ENDIAN_LE == dsk->bo) {
+      _stw_le(dsk->buf + adr, dat) ;
+    } else {
+      _stw_be(dsk->buf + adr, dat) ;
+    }
   } break ;
   }
 }
 
 u_byte_t pm_dev_dsk_ldb (struct pm_dev_dsk_t * dsk, u_word_t adr)
 {
+  u_half_t dat = 0 ;
 
+  if (0 != (adr & 0x1))
+    return dat ;
+
+  switch (adr) {
+  case 0x00 :
+    /* fallthrough */
+  case 0x04 :
+    /* fallthrough */
+  case 0x08 :
+    /* fallthrough */
+  case 0x0C :
+    /* fallthrough */
+  case 0x10 : {
+    /* ignored */
+  } break ;
+
+  default : {
+    if (0x100 < adr)
+      break ;
+
+    dat = dsk->buf[adr & 0x1FF] ;
+  } break ;
+  }
+
+  return dat ;
 }
 
 u_half_t pm_dev_dsk_ldh (struct pm_dev_dsk_t * dsk, u_word_t adr)
 {
+  u_half_t dat = 0 ;
 
+  if (0 != (adr & 0x1))
+    return dat ;
+
+  switch (adr) {
+  case 0x00 :
+    /* fallthrough */
+  case 0x04 :
+    /* fallthrough */
+  case 0x08 :
+    /* fallthrough */
+  case 0x0C :
+    /* fallthrough */
+  case 0x10 : {
+    /* ignored */
+  } break ;
+
+  default : {
+    if (0x100 < adr)
+      break ;
+
+    adr &= 0x1FF ;
+    
+    if (__PM_ENDIAN_LE == dsk->bo) {
+      dat = _ldh_le(dsk->buf + adr) ;
+    } else {
+      dat = _ldh_be(dsk->buf + adr) ;
+    }
+  } break ;
+  }
+
+  return dat ;
 }
 
 u_word_t pm_dev_dsk_ldw (struct pm_dev_dsk_t * dsk, u_word_t adr)
 {
+  u_word_t dat = 0 ;
 
+  if (0 != (adr & 0x3))
+    return dat ;
+
+  switch (adr) {
+  case 0x00 : {
+    dat = dsk->err ;
+  } break ;
+
+  case 0x04 : {
+    dat = dsk->len ;
+  } break ;
+
+  case 0x08 : {
+    /* ignored */
+  } break ;
+
+  case 0x0C : {
+    dat = dsk->bo ;
+  } break ;
+
+  case 0x10 : {
+    _dev_dsk_ldsec(dsk) ;
+  } break ;
+
+  default : {
+    if (0x100 < adr)
+      break ;
+
+    adr &= 0x1FF ;
+    
+    if (__PM_ENDIAN_LE == dsk->bo) {
+      dat = _ldw_le(dsk->buf + adr) ;
+    } else {
+      dat = _ldw_be(dsk->buf + adr) ;
+    }
+  } break ;
+  }
+
+  return dat ;
 }
 
 static void _dev_dsk_stsec (struct pm_dev_dsk_t * dsk)

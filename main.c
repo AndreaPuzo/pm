@@ -124,6 +124,7 @@ _read_ram_len :
 
   static struct pm_bus_t     bus ;
   static struct pm_dev_tmr_t tmr [ 4 ] ;
+  static struct pm_dev_dsk_t dsk [ 4 ] ;
   static struct sdl_trm_t    trm ;
 
   for (int idx = 0 ; idx < 4 ; ++idx) {
@@ -137,6 +138,17 @@ _read_ram_len :
     tmr[idx].dev.ldb = (pm_dev_ldb_t)NULL ;
     tmr[idx].dev.ldh = (pm_dev_ldh_t)NULL ;
     tmr[idx].dev.ldw = (pm_dev_ldw_t)pm_dev_tmr_ldw ;
+
+    dsk[idx].dev.adr = 0x20000000 + (idx * 0x400) ;
+    dsk[idx].dev.len = 0x400 ;
+    dsk[idx].dev.rst = (pm_dev_rst_t)pm_dev_dsk_rst ;
+    dsk[idx].dev.clk = (pm_dev_clk_t)pm_dev_dsk_clk ;
+    dsk[idx].dev.stb = (pm_dev_stb_t)pm_dev_dsk_stb ;
+    dsk[idx].dev.sth = (pm_dev_sth_t)pm_dev_dsk_sth ;
+    dsk[idx].dev.stw = (pm_dev_stw_t)pm_dev_dsk_stw ;
+    dsk[idx].dev.ldb = (pm_dev_ldb_t)pm_dev_dsk_ldb ;
+    dsk[idx].dev.ldh = (pm_dev_ldh_t)pm_dev_dsk_ldh ;
+    dsk[idx].dev.ldw = (pm_dev_ldw_t)pm_dev_tmr_ldw ;
   }
 
   if (0 != pm_bus_ctor(&bus, ram_len)) {
