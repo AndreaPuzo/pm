@@ -1,2 +1,1 @@
-# pm
-PostMachine
+# PocketMachine (PM) - Documentation
