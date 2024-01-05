@@ -1,0 +1,536 @@
+.----------------------------------------------------------------.
+| Instruction (MSb -> LSb)             | Assembly                |
+|--------------------------------------|-------------------------|
+|          U/S     C     B     A     O | mne-  operands          |
+|    V   M   X                         | monic                   |
+|--------------------------------------|-------------------------|
+| ssssssssssss ccccc bbbbb aaaaa 00000 | add   rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 00001 | sub   rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 00010 | umul  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 00011 | udiv  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 00100 | umod  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 00101 | smul  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 00110 | sdiv  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 00111 | smod  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 01000 | and   rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 01001 | or    rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 01010 | xor   rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 01011 | shl   rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 01100 | ushr  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 01101 | sshr  rA, rB, rC + S    |
+| uuuuuuuuuuuu cccc0 bbbbb aaaaa 01110 | movl  rA, rB, UC        |
+| uuuuuuuuuuuu cccc1 bbbbb aaaaa 01110 | movh  rA, rB, UC        |
+| ssssssssssss cccc0 bbbbb aaaaa 01111 | jal   rA, rB + SC       |
+| ssssssssssss cccc1 bbbbb aaaaa 01111 | rjal  rA, rB + SC       |
+| ssssssssssss ccccc bbbbb aaaaa 10000 | bne   rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 10001 | beq   rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 10010 | ublt  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 10011 | uble  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 10100 | sblt  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 10101 | sble  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 10110 | sldb  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 10111 | sldh  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 11000 | uldb  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 11001 | uldh  rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 11010 | ldw   rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 11011 | stb   rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 11100 | sth   rA, rB, rC + S    |
+| ssssssssssss ccccc bbbbb aaaaa 11101 | stw   rA, rB, rC + S    |
+| ssssssssssss 00000 bbbbb aaaaa 11110 | psb   rA, rB + S        |
+| ssssssssssss 00001 bbbbb aaaaa 11110 | psh   rA, rB + S        |
+| ssssssssssss 00010 bbbbb aaaaa 11110 | psw   rA, rB + S        |
+| ???????????? 00011 bbbbb aaaaa 11110 | uplb  rA, rB            |
+| ???????????? 00100 bbbbb aaaaa 11110 | uplh  rA, rB            |
+| ???????????? 00101 bbbbb aaaaa 11110 | plw   rA, rB            |
+| ???????????? 00110 bbbbb aaaaa 11110 | splb  rA, rB            |
+| ???????????? 00111 bbbbb aaaaa 11110 | splh  rA, rB            |
+| ssssssssssss 01000 bbbbb aaaaa 11110 | not   rA, rB, S         |
+| ???????????? 01001 bbbbb aaaaa 11110 | xhg   rA, rB            |
+| uuuuuuuuuuuu 01010 bbbbb aaaaa 11110 | enter rA, rB, U         |
+| ???????????? 01011 bbbbb aaaaa 11110 | leave rA, rB            |
+| ssssssssssss 01100 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ssssssssssss 01101 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ssssssssssss 01110 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ssssssssssss 01111 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| mmmmmmmmmmmm 10000 bbbbb aaaaa 11110 | ldcsr csrA, rB, M       |
+| vvvvvvvvvvvv 10001 bbbbb aaaaa 11110 | stcsr csrA, rB, V       |
+| ????mmmm?xxx 10010 bbbbb aaaaa 11110 | gecsr csrA, rB, M, X    |
+| vvvvmmmm?xxx 10011 bbbbb aaaaa 11110 | secsr csrA, rB, M, X, V |
+| ???????????? 10100 ????? aaaaa 11110 | int   A                 |
+| ???????????? 10101 ????? ????? 11110 | rti                     |
+| ssssssssssss 10110 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ssssssssssss 10111 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ssssssssssss 11000 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ssssssssssss 11001 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ssssssssssss 11010 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ssssssssssss 11011 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ssssssssssss 11100 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ssssssssssss 11101 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ssssssssssss 11110 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ssssssssssss 11111 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ssssssssssss ccccc bbbbb aaaaa 11111 | ????? rA, rB, rC + S    |
+'----------------------------------------------------------------'
+
+.----------------------------------------------------------------.
+| Type | Vector Index | Assembly | Description                   |
+|------|--------------|----------|-------------------------------|
+|   IA |        00000 |       MC | Machine check (abort)         |
+|   IE |        00001 |       MR | Machine reset                 |
+|   IT |        00010 |       SS | Single step execution         |
+|   IT |        00011 |       BK | Breakpoint                    |
+|   IE |        00100 |       UD | Undefined instruction         |
+|   IE |        00101 |       DZ | Division by zero              |
+|   IE |        00110 |       PP | Privilege level protection    |
+|   IE |        00111 |       AP | Access protection             |
+|   IF |        01000 |       BF | Bus fault                     |
+|   IF |        01001 |       RF | Execution fault               |
+|   IF |        01010 |       WF | Write fault                   |
+|   IF |        01011 |       PF | Page fault                    |
+|   I? |        011xx |       SX | Software interrupt X          |
+|   E? |        1xxxx |       HX | Hardware interrupt X          |
+'----------------------------------------------------------------'
+
+.----------------------------------------------------------------.
+| Type | PL | Address | Assembly | Description                   |
+|------|----|---------|----------|-------------------------------|
+|   RW |  M |   00000 |      MSR | Status register               |
+|   R- |  M |   00001 |     MIRR | Interrupt pending requests    |
+|   RW |  M |   00010 |     MIMR | Interrupt masks               |
+|   RW |  M |   00011 |     MIVT | Interrupt vectors table       |
+|   RW |  M |   00100 |     MISP | Interrupt save context        |
+|   RW |  M |   00101 |     MIDH | Interrupt delegate to H       |
+|   RW |  M |   00110 |     MIDS | Interrupt delegate to S       |
+|   RW |  M |   00111 |     MPDT | Page descriptor table         |
+|------|----|---------|----------|-------------------------------|
+|   RW |  H |   01000 |      HSR | Status register               |
+|   R- |  H |   01001 |     HIRR | Interrupt pending requests    |
+|   RW |  H |   01010 |     HIMR | Interrupt masks               |
+|   RW |  H |   01011 |     HIVT | Interrupt vectors table       |
+|   RW |  H |   01100 |     HISP | Interrupt save context        |
+|   RW |  H |   01101 |     ???? | Undefined                     |
+|   RW |  H |   01110 |     ???? | Undefined                     |
+|   RW |  H |   01111 |     HPDT | Page descriptor table         |
+|------|----|---------|----------|-------------------------------|
+|   RW |  S |   10000 |      SSR | Status register               |
+|   R- |  S |   10001 |     SIRR | Interrupt pending requests    |
+|   RW |  S |   10010 |     SIMR | Interrupt masks               |
+|   RW |  S |   10011 |     SIVT | Interrupt vectors table       |
+|   RW |  S |   10100 |     SISP | Interrupt save context        |
+|   RW |  S |   10101 |     ???? | Undefined                     |
+|   RW |  S |   10110 |     ???? | Undefined                     |
+|   RW |  S |   10111 |     SPDT | Page descriptor table         |
+|------|----|---------|----------|-------------------------------|
+|   R- |  U |   11000 |      USR | Status register               |
+|   RW |  U |   11001 |     ???? | Undefined                     |
+|   RW |  U |   11010 |     ???? | Undefined                     |
+|   RW |  U |   11011 |     UIVT | Interrupt vectors table       |
+|   RW |  U |   11100 |     UISP | Interrupt save context        |
+|   RW |  U |   11101 |     ???? | Undefined                     |
+|   RW |  U |   11110 |     ???? | Undefined                     |
+|   R- |  U |   11111 |     UPDT | Page descriptor table         |
+'----------------------------------------------------------------'
+
+ddssttcp
+
+000p
+0001
+0010
+0011
+
+
+PL 0...1
+RN 2 running
+EI 3 enable interrupts
+WI 4 wait for interrupt
+SI 5 serving interrupt
+SD 6 stack direction
+PM 7 paged memory
+
+interrupt {cpu, num}:
+  if 0 != cpu.midh and (cpu.midh >> num) & 1 then:
+    irr = @cpu.hirr
+  elif 0 != cpu.mids and (cpu.mids >> num) & 1 then:
+    irr = @cpu.sirr
+  else
+    irr = @cpu.mirr
+  [irr] |= 1 << num
+
+
+
+
+
+
+
+
+ldcsr csrA, rB, M        ; rB = csrA & M
+stcsr csrA, rB, V        ; csrA = rB | V
+secsr csrA, rB + V, M, X ; csrA = (csrA & ~(M << X)) | (((rB + V) & M) << X)
+gecsr csrA, rB,     M, X ; rB = (csrA >> X) & M
+
+32-bit : 4 * 8-bit, 8 * 4-bit
+
+SSSS SSSS SSSS
+00VV MMMM 0XXX
+
+4-bit value
+4-bit mask
+3-bit index
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{exp}+
+(do {exp})
+(seq {exp} {exp})
+(var {sym} {exp})
+(fun {sym} {exp} {exp})
+(ret {exp})
+(if {exp} {exp} {exp}?)
+(when {exp} {exp})
+(lab {sym})
+(brk {sym}?)
+(asm {str} {exp}?)
+({sym} {exp}?)
+
+
+ldw {reg}, {mem}
+stw {reg}, {mem}
+jmp {lab}
+
+(fun add (a b) (do
+  (var c 0)
+  (asm 'ldw a0, %m' a)
+  (asm 'ldw a1, %m' b)
+  (asm 'add a0, a0, a1, 0')
+  (asm 'stw a0, %m' c)
+  (ret c)))
+
+[ b a | ra fp c ]
+
+add:
+  sub sp, sp, zr, +8
+  stw ra, sp, zr, +4
+  stw fp, sp, zr, 0
+  ldw a0, fp, zr, +8
+  ldw a1, fp, zr, +12
+  add a0, a0, a1, 0
+  stw a0, fp, zr, -4
+  add sp, fp, zr, 0
+  ldw fp, sp, zr, 0
+  ldw ra, sp, zr, +4
+  add sp, sp, zr, +8
+  jmp ra, zr, 0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+expr
+  : ({exp})
+  | {exp}, {exp}
+  | (do {exp}+)
+  | (if {exp} {exp})
+  | (if {exp} {exp} {exp})
+  | (when {exp} {exp})
+  | (eq {exp} {exp})
+  | (ne {exp} {exp})
+  | (lt {exp} {exp})
+  | (le {exp} {exp})
+  | (gt {exp} {exp})
+  | (ge {exp} {exp})
+  | (add {exp} {exp})
+  | (sub {exp} {exp})
+  | (mul {exp} {exp})
+  | (div {exp} {exp})
+  | (mod {exp} {exp})
+  | (and {exp} {exp})
+  | (or {exp} {exp})
+  | (not {exp})
+  | (call {exp} {exp}*)
+  | (ret {exp})
+  | (get {exp})
+  | (set {exp} {exp})
+  | (let {exp} {exp})
+  | (var {sym} {exp})
+  | (fun {sym} {exp} {exp})
+  | (asm {str} {exp})
+  | (imp {str})
+  | (typ {exp})
+  | brk
+  | {num}
+  | {str}
+  | {sym}
+  | int
+  | ptr
+  | ...
+
+==========================
+
+zr fp sp a0 a1 t0
+
+mov {reg} {imm}:
+  movl {reg}, {imm.lo}
+  movh {reg}, {imm.hi}
+
+mov {dst:reg} {src:reg}:
+  add {dst}, {src}, zr, 0 
+
+psh {imm}:
+  mov t0, {imm}
+  sub sp, sp, zr, 4
+  sto t0, sp, zr, 0
+
+psh {reg}:
+  sub sp, sp, zr, 4
+  sto {reg}, sp, zr, 0
+
+pop {reg}:
+  lod {reg}, sp, zr, 0
+  add sp, sp, zr, 4
+
+call {lab:imm}:
+  mov t0, {lab}
+  rjal t0, zr, 0
+
+ret
+  jmp t0, zr, 0
+
+enter {imm}:
+  psh t0
+  psh fp
+  mov t0, {imm}
+  mul t0, t0, zr, 4
+  sub sp, sp, t0, 0
+
+leave:
+  mov sp, fp
+  pop fp
+  pop t0
+
+add|sub|mul|div|mod|and|or|xor|shl|shr:
+  pop a0
+  pop a1
+  add|sub|smul|sdiv|smod|and|or|eor|shl|sshr a0, a0, a1, 0
+  psh a0
+
+not:
+  pop a0
+  not a0, a0, 0
+  psh a0
+
+neg:
+  pop a0
+  not a0, a0, 1
+  psh a0
+
+lod:
+  pop a0
+  ldw a0, a0, zr, 0
+  psh a0
+
+sto:
+  pop a0
+  pop a1
+  stw a1, a0, zr, 0
+
+eq|ne|lt|le:
+  pop a0
+  pop a1
+  beq|bne|sblt|sble a0, a1, zr, t
+f:
+  psh 0
+  rjmp zr, zr, e
+t:
+  psh 1
+e:
+
+gt|lt:
+  pop a0
+  pop a1
+  sblt|sble a1, a0, zr, t
+f:
+  psh 0
+  rjmp zr, zr, e
+t:
+  psh 1
+e:
+
+do {imm}:
+  enter {imm}
+  ...
+  leave
+
+if:
+  pop a0
+  bne a0, zr, zr, t
+f:
+  ...
+  rjmp zr, zr, e
+t:
+  ...
+e:
+
+when:
+l:
+  pop a0
+  bne a0, zr, zr, t
+f:
+  rjmp zr, zr, e
+t:
+  ...
+  rjmp zr, zr, l
+e:
+
+====================================
+
+
+
+
+
+
+====================================
+
+
+
+(imp 'io')
+(fun main (argc, argv) (
+  (var idx 0)
+  (when (lt idx argc)
+    (call print '%i: %s\n' idx (get (add argv (mul idx (siz int)))))
+    (let (add idx 1)
+
+  (var msg 'Hello world!\n')
+  (call print msg)
+  (ret 0)
+)
+
+(fun putc (ch) (do
+  (ret 0))
+
+(fun print (fmt, ...) (do
+  (var f fmt)
+  (var n 0)
+  (var p ...)
+  (when 1 (do
+    (var c (lod f))
+    (if (eq c 0) brk)
+
+    ; %{fmt}
+    (if (eq c '%') (do
+      (set f (add f 1))
+      (set c (lod f))
+      
+      ; %%
+      (if (eq c '%') (do
+        (call putc c)
+        (set n (add n 1))))
+
+      ; %i
+      (if (eq c 'i') (do
+        (var num (lod p))
+        (set p (add p 1))
+        (var str (call _print_num_to_str num))
+        (var idx 0)
+        (when )
+        ; convert argument to string
+        ; print the string
+        )
+
+      ; %c
+      (if (eq c 'c') (do
+        (var chr (lod p))
+        (set p (add p 1))
+        (call putc chr)
+        (set n (add n 1)))
+
+      ; %s
+      (if (eq c 's' (do
+        (var str (lod p))
+        (set p (add p 1))
+        (var idx 0)
+        (when 1 (do
+          (var chr (lod (add str idx)))
+          (if (eq chr 0) brk)
+          (call putc chr)
+          (set n (add n 1))
+          (set idx (add idx 1))))
+        )))))
+      ) (do
+        (call putc c)
+        (set n (add n 1))))
+    (set f (add f 1)))
+
+  (ret (sub f fmt))
+)
+
+(fun main (argc, argv) (do
+  (var i 0)
+  (when (lt i argc) (do
+    (call print
+      '%i: %s\n' i (lod (add argv (mul i (siz ptr)))))
+    (set i (add i 1))))
+  (ret 0))
