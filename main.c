@@ -68,7 +68,7 @@ int main (int argc, char ** argv)
     if (0 == strcmp(args, "--ver") || 0 == strcmp(args, "-v")) {
       fprintf(
         stdout ,
-        "PostMachine (PM) %u.%u.%u\n"
+        "PocketMachine (PM) %u.%u.%u\n"
         "Built on %s at %s\n"
         "Copyright (c) 2024, Andrea Puzo.\n" ,
         __PM_VERSION_MAJOR ,
@@ -250,7 +250,7 @@ int sdl_trm_ctor (struct sdl_trm_t * trm)
   trm->scr.len_y = 25 ;
 
   trm->window = SDL_CreateWindow(
-    "PostMachine"          ,
+    "PocketMachine"        ,
     SDL_WINDOWPOS_CENTERED ,
     SDL_WINDOWPOS_CENTERED ,
     trm->scr.len_x * 0x08  ,
