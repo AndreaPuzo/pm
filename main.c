@@ -32,6 +32,8 @@ struct sdl_trm_t {
   struct dev_fnt8x16_t fnt ;
 } ;
 
+static int _sdl_trm_put_col_chr (struct sdl_trm_t * trm, int fg, int bg, char chr) ;
+static int _sdl_trm_put_col_str (struct sdl_trm_t * trm, int fg, int bg, const char * str) ;
 static int _sdl_trm_put_chr (struct sdl_trm_t * trm, char chr) ;
 static int _sdl_trm_put_str (struct sdl_trm_t * trm, const char * str) ;
 static void _sdl_trm_render_chr (struct sdl_trm_t * trm, u_byte_t ofs_x, u_byte_t ofs_y, u_half_t chr) ;
@@ -42,15 +44,18 @@ void sdl_trm_clk  (struct sdl_trm_t * trm) ;
 
 static void _boot (struct pm_bus_t * bus, struct sdl_trm_t * trm, u_word_t exp)
 {
-  fprintf(stderr, "\n") ;
+//  fprintf(stderr, "booting...\n") ;
+  _sdl_trm_put_str(trm, "BOOTING...") ;
 
   for (u_word_t adr = 0x00000000 ; adr < 0x80000000 ; adr += 0x200) {
     u_word_t mag = pm_bus_ldw(bus, adr) ;
+//    fprintf(stderr, "\r0x%08X\t\t0x%08X\\0x%08X", adr, mag, exp) ;
 
     if (exp == mag) {
-      char * hex = "0123456789ABCDEF" ;
+//      char * hex = "0123456789ABCDEF" ;
 
-      _sdl_trm_put_str(trm, "BOOTING...") ;
+//      fprintf(stderr, "\npassed.\n") ;
+      _sdl_trm_put_col_str(trm, 0xA, 0x0, " PASSED") ;
 /*      
       pm_dev_scr_stb(&trm->scr, 0x10000, 'B') ;
       pm_dev_scr_stb(&trm->scr, 0x10001, 'O') ;
@@ -74,19 +79,20 @@ static void _boot (struct pm_bus_t * bus, struct sdl_trm_t * trm, u_word_t exp)
       pm_dev_scr_stb(&trm->scr, 0x10013, hex[(adr >>  4) & 0xF]) ;
       pm_dev_scr_stb(&trm->scr, 0x10014, hex[(adr >>  0) & 0xF]) ;
 */      
-      fprintf(stderr, "\n") ;
       return ; 
     }
   }
 
+//  fprintf(stderr, "\nfailed.\n") ;
+  _sdl_trm_put_col_str(trm, 0x9, 0x0, " FAILED") ;
+/*
   pm_dev_scr_sth(&trm->scr, 0x10000, 0x9000 | 'F') ;
   pm_dev_scr_sth(&trm->scr, 0x10001, 0x9000 | 'A') ;
   pm_dev_scr_sth(&trm->scr, 0x10002, 0x9000 | 'I') ;
   pm_dev_scr_sth(&trm->scr, 0x10003, 0x9000 | 'L') ;
   pm_dev_scr_sth(&trm->scr, 0x10004, 0x9000 | 'E') ;
   pm_dev_scr_sth(&trm->scr, 0x10005, 0x9000 | 'D') ;
-
-  fprintf(stderr, "\n") ;
+*/
 }
 
 int main (int argc, char ** argv)
@@ -619,7 +625,7 @@ void sdl_trm_clk (struct sdl_trm_t * trm)
   trm->scr.edit = 0 ;
 }
 
-static int _sdl_trm_put_chr (struct sdl_trm_t * trm, char chr)
+static int _sdl_trm_put_col_chr (struct sdl_trm_t * trm, int fg, int bg, char chr)
 {
   if (chr == '\t') {
     int tab0 = _sdl_trm_put_chr(trm, ' ') ;
@@ -658,7 +664,21 @@ static int _sdl_trm_put_chr (struct sdl_trm_t * trm, char chr)
     return 1 ;
   }
 
-  pm_dev_scr_stb(&trm->scr, 0x10000 + (trm->scr.cur_y * trm->scr.len_x + trm->scr.cur_x), chr) ;
+  u_word_t adr = 0x10000 + (trm->scr.cur_y * trm->scr.len_x + trm->scr.cur_x) ;
+
+  if (fg < 0 || bg < 0) {
+    u_half_t dat = pm_dev_scr_ldh(&trm->scr, adr) ;
+    
+    if (fg < 0) {
+      fg = (dat >> 12) & 0xF ;
+    }
+
+    if (bg < 0) {
+      bg = (dat >>  8) & 0xF ;
+    }
+  }
+
+  pm_dev_scr_sth(&trm->scr, adr, (fg << 12) | (bg << 8) | (chr & 0xFF)) ;
   ++trm->scr.cur_x ;
 
   if (trm->scr.cur_x == trm->scr.len_x) {
@@ -671,25 +691,45 @@ static int _sdl_trm_put_chr (struct sdl_trm_t * trm, char chr)
     }
   }
 
-//  fprintf(stderr, "( %03u,%03u ) `%c`\n", trm->scr.cur_y, trm->scr.cur_x, (' ' <= chr && chr <= '~') ? chr : '?') ;
-
   return 1 ;
 }
 
-static int _sdl_trm_put_str (struct sdl_trm_t * trm, const char * str)
+static int _sdl_trm_put_col_str (struct sdl_trm_t * trm, int fg, int bg, const char * str)
 {
-   int len = 0 ;
+  int len = 0 ;
 
-   while ('\0' != str[len]) {
-    int res = _sdl_trm_put_chr(trm, str[len]) ;
+  while ('\0' != str[len]) {
+    int res = _sdl_trm_put_col_chr(trm, fg, bg, str[len]) ;
 
     if (res < 0)
       break ;
 
     len += res ;
-   }
+  }
 
-   return len ;
+  return len ;
+}
+
+
+static int _sdl_trm_put_chr (struct sdl_trm_t * trm, char chr)
+{
+  return _sdl_trm_put_col_chr(trm, -1, -1, chr) ;
+}
+
+static int _sdl_trm_put_str (struct sdl_trm_t * trm, const char * str)
+{
+  int len = 0 ;
+
+  while ('\0' != str[len]) {
+    int res = _sdl_trm_put_chr(trm, str[len]) ;
+
+    if (res <= 0)
+      break ;
+
+    len += res ;
+  }
+
+  return len ;
 }
 
 static void _sdl_trm_render_chr (struct sdl_trm_t * trm, u_byte_t ofs_x, u_byte_t ofs_y, u_half_t chr)

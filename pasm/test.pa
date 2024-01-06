@@ -1,0 +1,67 @@
+  rjal main
+
+msg: byte 'Hello world!', 10, 13, 0
+
+main:
+  movh a0, a0, msg:hi
+  movl a0, a0, msg:lo
+
+; takes:
+;   (a0 >>  0) & 0xFF --- character
+;   (a0 >>  8) & 0x0F --- background color
+;   (a0 >> 12) & 0x0F --- foreground color
+; returns:
+;   a0 >  0           --- success
+;   a0 <= 0           --- failure
+colputc:
+
+  ; save the current context
+
+  psw  sp, ra, 0
+  psw  sp, a1, 0
+  psw  sp, a2, 0
+  psw  sp, a3, 0
+  psw  sp, a4, 0
+
+  ; locals
+
+  add  a4, a0, zr, 0  ; character
+  mov  a0, 0x50001100 ; screen address
+  mov  a1, 0x00000000 ; screen length (rows, cols)
+  mov  a2, 0x00000002 ; screen cursor (rows, cols)
+  mov  a3, 0x00010000 ; screen buffer
+  
+  ; load the screen information
+
+  ldh  a1, a0, a1, 0
+  ldh  a2, a0, a2, 0
+
+  ; 
+  
+  add  t0, a1, zr, 0
+  and  t0, t0, zr, 0xFF
+  ; t0 = cols
+  
+  add  t1, a2, zr, 0
+  ushl t1, t1, zr, 8
+  ; t1 = cur.rows
+
+
+
+
+  umul t0, t0, 
+
+  sth  a4, a0, a3, 0
+
+  ; restore previous context
+
+  plw  sp, a4
+  plw  sp, a3
+  plw  sp, a2
+  plw  sp, a1
+  plw  sp, ra
+
+  ; return to the callee
+
+  jal  ra, zr, 0
+

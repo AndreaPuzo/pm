@@ -341,10 +341,8 @@ u_word_t pm_dev_dsk_ldw (struct pm_dev_dsk_t * dsk, u_word_t adr)
     
     if (__PM_ENDIAN_LE == dsk->bo) {
       dat = _ldw_le(dsk->buf + adr) ;
-      fprintf(stderr, "data (le): 0x%08X\n", dat) ;
     } else {
       dat = _ldw_be(dsk->buf + adr) ;
-      fprintf(stderr, "data (be): 0x%08X\n", dat) ;
     }
   } break ;
   }
