@@ -501,7 +501,14 @@ void pm_cpu_clk (struct pm_cpu_t * cpu)
       _cpu_int(cpu, 1, 0) ;
     } break ;
 
-    case 0x16 :
+    case 0x16 : {
+      if (a <= 0xF) {
+        pm_bus_rst(cpu->bus, a) ;
+      } else {
+        pm_bus_rst(cpu->bus, -1) ;
+      }
+    } break ;
+    
     case 0x17 :
     case 0x18 :
     case 0x19 :
@@ -1072,15 +1079,29 @@ void pm_iom_int (struct pm_iom_t * iom, struct pm_dev_t * dev)
   pm_bus_int(iom->bus, PM_INT_HI(dev->id)) ;
 }
 
-void pm_iom_rst (struct pm_iom_t * iom)
+void pm_iom_rst (struct pm_iom_t * iom, int id)
 {
-  for (int idx = 0 ; idx < 0x10 ; ++idx) {
-    struct pm_dev_t * dev = iom->dev[idx] ;
+  if (-1 == id) {
+    for (int idx = 0 ; idx < 0x10 ; ++idx) {
+      struct pm_dev_t * dev = iom->dev[idx] ;
 
-    if (NULL == dev || NULL == dev->rst)
-      continue ;
+      if (NULL == dev || NULL == dev->rst)
+        continue ;
 
-    dev->rst(dev) ;
+      dev->rst(dev) ;
+    }
+  } else {
+    for (int idx = 0 ; idx < 0x10 ; ++idx) {
+      struct pm_dev_t * dev = iom->dev[idx] ;
+      
+      if (dev->id != id)
+      	continue ;
+
+      if (NULL == dev || NULL == dev->rst)
+        continue ;
+
+      dev->rst(dev) ;
+    }
   }
 }
 
@@ -1258,12 +1279,16 @@ void pm_bus_int (struct pm_bus_t * bus, u_word_t irq)
   pm_cpu_int(&bus->cpu, irq) ;
 }
 
-void pm_bus_rst (struct pm_bus_t * bus)
+void pm_bus_rst (struct pm_bus_t * bus, int id)
 {
   bus->hlt = 0 ;
-  pm_cpu_rst(&bus->cpu) ;
-  pm_ram_rst(&bus->ram) ;
-  pm_iom_rst(&bus->iom) ;
+  
+  if (-1 == id) {
+    pm_cpu_rst(&bus->cpu) ;
+    pm_ram_rst(&bus->ram) ; 
+  }
+  
+  pm_iom_rst(&bus->iom, id) ;
 }
 
 void pm_bus_clk (struct pm_bus_t * bus)

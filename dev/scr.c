@@ -94,6 +94,22 @@ void pm_dev_scr_stb (struct pm_dev_scr_t * scr, u_word_t adr, u_byte_t dat)
 
     scr->edit = 1 ;
   } break ;
+  
+  case 0xF0 : {
+    _dev_scr_ver_scroll_u(scr, dat) ;
+  } break ;
+
+  case 0xF1 : {
+    _dev_scr_ver_scroll_d(scr, dat) ;
+  } break ;
+
+  case 0xF2 : {
+    _dev_scr_hor_scroll_l(scr, dat) ;
+  } break ;
+
+  case 0xF3 : {
+    _dev_scr_hor_scroll_r(scr, dat) ;
+  } break ;
 
   default : {
     if (0 == (adr & 0x10000))
@@ -136,22 +152,6 @@ void pm_dev_scr_sth (struct pm_dev_scr_t * scr, u_word_t adr, u_half_t dat)
   case 0x8A : case 0x9A : case 0xAA : case 0xBA :
   case 0xCA : case 0xDA : case 0xEA : case 0xFA : {
     /* ignore */
-  } break ;
-
-  case 0xF0 : {
-    _dev_scr_ver_scroll_u(scr, dat) ;
-  } break ;
-
-  case 0xF1 : {
-    _dev_scr_ver_scroll_d(scr, dat) ;
-  } break ;
-
-  case 0xF2 : {
-    _dev_scr_hor_scroll_l(scr, dat) ;
-  } break ;
-
-  case 0xF3 : {
-    _dev_scr_hor_scroll_r(scr, dat) ;
   } break ;
 
   default : {

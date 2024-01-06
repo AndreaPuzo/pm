@@ -160,7 +160,7 @@ struct pm_iom_t {
 int      pm_iom_ctor (struct pm_iom_t * iom, struct pm_bus_t * bus, u_word_t adr, u_word_t len) ;
 void     pm_iom_dtor (struct pm_iom_t * iom) ;
 void     pm_iom_int  (struct pm_iom_t * iom, struct pm_dev_t * dev) ;
-void     pm_iom_rst  (struct pm_iom_t * iom) ;
+void     pm_iom_rst  (struct pm_iom_t * iom, int id) ;
 void     pm_iom_clk  (struct pm_iom_t * iom) ;
 void     pm_iom_stb  (struct pm_iom_t * iom, u_word_t adr, u_byte_t dat) ;
 void     pm_iom_sth  (struct pm_iom_t * iom, u_word_t adr, u_half_t dat) ;
@@ -183,7 +183,7 @@ struct pm_bus_t {
 int      pm_bus_ctor (struct pm_bus_t * bus, u_word_t len) ;
 void     pm_bus_dtor (struct pm_bus_t * bus) ;
 void     pm_bus_int  (struct pm_bus_t * bus, u_word_t irq) ;
-void     pm_bus_rst  (struct pm_bus_t * bus) ;
+void     pm_bus_rst  (struct pm_bus_t * bus, int id) ;
 void     pm_bus_clk  (struct pm_bus_t * bus) ;
 void     pm_bus_stb  (struct pm_bus_t * bus, u_word_t adr, u_byte_t dat) ;
 void     pm_bus_sth  (struct pm_bus_t * bus, u_word_t adr, u_half_t dat) ;

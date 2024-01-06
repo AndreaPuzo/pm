@@ -58,7 +58,8 @@
 | vvvvmmmm?xxx 10011 bbbbb aaaaa 11110 | secsr csrA, rB, M, X, V |
 | ???????????? 10100 ????? aaaaa 11110 | int   A                 |
 | ???????????? 10101 ????? ????? 11110 | rti                     |
-| ssssssssssss 10110 bbbbb aaaaa 11110 | ????? rA, rB + S        |
+| ???????????? 10110 ????? aaaaa 11110 | rst   A                 |
+|                                      | ^^ A >= 16 to reset all |
 | ssssssssssss 10111 bbbbb aaaaa 11110 | ????? rA, rB + S        |
 | ssssssssssss 11000 bbbbb aaaaa 11110 | ????? rA, rB + S        |
 | ssssssssssss 11001 bbbbb aaaaa 11110 | ????? rA, rB + S        |
@@ -129,6 +130,182 @@
 |   RW |  U |   11110 |     ???? | Undefined                     |
 |   R- |  U |   11111 |     UPDT | Page descriptor table         |
 '----------------------------------------------------------------'
+
+Random Access Memory starts at 0x80000000 and is 32MiB by default
+but can be extended to reach 2GiB. Input/Output Memory can span
+2GiB of memory and the number of information stored in it
+depends on the device that are mapped into it.
+Every device emits interrupts using their bus ID (0...F) ORed with 0x10
+so they are Hardware interrupts (see table), the ID should follow the
+sequence of mounting devices on the bus, at the beginning are mounted
+the 4 timers, than the 7 disks, then the font, then the keyboard and
+then the screen so their interrupts should be them. After the reset every
+devices send its interrupt to acknowledge to the CPU that they are ready so
+to know exactly what is the ID of a device you can try to reset it and
+wait for an interrupt.
+devices {
+[timers]
+* timer 0        0x40000000
+* timer 1        0x40000100
+* timer 2        0x40000200
+* timer 3        0x40000300
+  * stw
+    0x00000 clear status flag timer is running (1 << 0)
+    0x00001 set status flag timer is running (1 << 0)
+    0x00002 clear status flag CPU clock is overflowed (1 << 1)
+    0x00003 set status flag CPU clock is overflowed (1 << 1)
+    0x00004 clear status flag timer reset (1 << 2)
+    0x00005 set status flag timer reset (1 << 2)
+    0x00006 set status register
+    0x00008 set the timeout
+  * ldw
+    0x00000 status flag timer is running (1 << 0) is clean
+    0x00001 status flag timer is running (1 << 0) is set
+    0x00002 status flag CPU clock is overflowed (1 << 1) is clean
+    0x00003 status flag CPU clock is overflowed (1 << 1) is set
+    0x00004 status flag timer reset (1 << 2) is clean
+    0x00005 status flag timer reset (1 << 2) is set
+    0x00006 get status register
+    0x00007 get the start time
+    0x00008 get the timeout
+[disks (sections are 512 bytes long)]
+* arguments   rw 0x20000000 (storing arguments passed to the machine using the command line)
+* cdrom     0 r- 0x20000400 (based on a real file)
+* cdrom     1 r- 0x20000800 (based on a real file)
+* hard-disk 0 rw 0x20000C00 (based on a real file)
+* hard-disk 1 rw 0x20001000 (based on a real file)
+* hard-disk 2 rw 0x20001400 (based on a real file)
+* hard-disk 3 rw 0x20001800 (based on a real file)
+  * stb
+    0x00200...0x003FF store byte from current section buffer (no flush)
+  * sth
+    0x00200...0x003FF store half from current section buffer respecting the byte order (no flush)
+  * stw
+    0x00000 set last error
+    0x00008 set the section flushing the current loaded section and loading the next section
+            rise ERR_IS if section is out of boundaries
+    0x0000C set the byte order (0 le, otherwise be)
+    0x00010 store the current section from host filesystem (stdio, FILE *)
+    0x00200...0x003FF store word from current section buffer respecting the byte order
+  * ldb
+    0x00200...0x003FF load byte from current section buffer
+  * ldh
+    0x00200...0x003FF load half from current section buffer respecting the byte order
+  * ldw
+    0x00000 get last error
+    0x00004 get the length of disk in bytes
+    0x0000C get the byte order (0x01234567 le, 0x67452301 be)
+    0x00010 load the current section from host filesystem (stdio, FILE *)
+    0x00200...0x003FF load word from current section buffer respecting the byte order
+  * errors:
+    * NO_ERR 0 (no errors)
+    * ERR_NF 1 (no file, cannot open the host file)
+    * ERR_RL 2 (cannot read the length of the host file)
+    * ERR_IL 3 (illegal length, maybe stdio fails)
+    * ERR_SK 4 (cannot seek the end, the begin or the address in the host file)
+    * ERR_WS 5 (the number of bytes written is not equal to the section size)
+    * ERR_RS 6 (the number of bytes read is not equal to the section size)
+    * ERR_IS 7 (invalid section number)
+[fonts]
+* font8x16    rw 0x50000000
+  * stb
+    0x00xxx font byte
+  * ldb
+    0x00xxx font byte
+[keyboards]
+* keyboard       0x50001000
+  * stb
+    0x00000 front index
+    0x00001 rear index
+    0x00002 queue
+  * ldb
+    0x00000 front index
+    0x00001 rear index
+    0x00002 dequeue or 0
+[screens (default: 80 cols x 25 rows, builtin font8x16, 16 GNOME terminal palette)]
+* screen         0x50001100
+  * stb
+    0x00000 set columns
+    0x00001 set rows
+    0x00002 set cursor column
+    0x00003 set cursor row
+    0x000x8 set red   component of color x in palette
+    0x000x9 set green component of color x in palette
+    0x000xA set blue  component of color x in palette
+    0x000xB set alpha component of color x in palette
+    0x000F0 vertical scroll up
+    0x000F1 vertical scroll down
+    0x000F2 horizontal scroll left
+    0x000F3 horizontal scroll right   
+    0x1xxxx set 8-bit character in the screen buffer
+  * sth
+    0x00000 columns       = (half >> 0) & 0xFF and
+            rows          = (half >> 8) & 0xFF
+    0x00002 cursor column = (half >> 0) & 0xFF and
+            cursor row    = (half >> 8) & 0xFF
+    0x1xxxx set foreground, background and 8-bit character in the screen buffer
+  * stw
+    0x00000 columns       = (word >>  0) & 0xFF and
+            rows          = (word >>  8) & 0xFF and
+            cursor column = (word >> 16) & 0xFF and
+            cursor row    = (word >> 24) & 0xFF
+    0x00004 set font address
+    0x000x8 set color x in palette
+  * ldb
+    0x00000 get columns
+    0x00001 get rows
+    0x00002 get cursor column
+    0x00003 get cursor row
+    0x000x8 get red   component of color x in palette
+    0x000x9 get green component of color x in palette
+    0x000xA get blue  component of color x in palette
+    0x000xB get alpha component of color x in palette
+    0x1xxxx get 8-bit character from the screen buffer
+  * ldh
+    0x00000 get (rows << 8) | (columns)
+    0x00002 get (cursor row << 8) | (cursor column)
+    0x1xxxx get ((((foreground << 4) | background) << 8) | character) from the screen buffer
+  * ldw
+    0x00000 get ((cursor row << 8) | (cursor column) << 16) | ((rows << 8) | (columns))
+    0x00004 get font address
+    0x000x8 get color x in palette
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ddssttcp
 

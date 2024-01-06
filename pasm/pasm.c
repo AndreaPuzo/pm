@@ -332,8 +332,7 @@ int pasm_com_comp (struct pasm_com_t * com)
 
 int pasm_com_stp1 (struct pasm_com_t * com)
 {
-  int typ ;
-  int err = 0 ;
+  int typ, err = 0, comment = 0 ;
 
   do {
     do {
@@ -341,14 +340,33 @@ int pasm_com_stp1 (struct pasm_com_t * com)
     
       if (PASM_TOK_EOF == typ)
         break ;
+
+      if (PASM_TOK_COM == typ) {
+        comment = 1 ;
+        continue ;
+      }
+
+      if (PASM_TOK_EOL == typ) {
+        comment = 0 ;
+        break ;
+      }
+
+      if (PASM_TOK_UNK == typ) {
+        if (0 != comment) {
+          continue ;
+        }
+        fprintf(stderr, "error: unknown token at %ld\n", com->lex.linc) ;
+        return -1 ;
+      }
     
       err = pasm_par_add_tok(&com->par, &com->lex.tok) ;
       
       if (err < 0)
         break ;
+
     } while (err < 0) ;
 
-
+    
   } while (err < 0)
 
   return err ;
