@@ -84,14 +84,13 @@ void pm_dev_dsk_rst (struct pm_dev_dsk_t * dsk)
     if (NULL == dsk->fn)
       return ;
   }
-  fprintf(stderr, "opening disk %s...\n", dsk->fn) ;
+
   dsk->fp = fopen(dsk->fn, "r+") ;
 
   if (NULL == dsk->fp) {
     dsk->err = PM_DEV_DSK_ERR_NF ;
     return ;
   }
-  fprintf(stderr, "opening disk %s...\n", dsk->fn) ;
 
   if (fseek(dsk->fp, 0, SEEK_END) < 0) {
     fclose(dsk->fp) ;
@@ -99,7 +98,6 @@ void pm_dev_dsk_rst (struct pm_dev_dsk_t * dsk)
     dsk->err = PM_DEV_DSK_ERR_SK ;
     return ;
   }
-  fprintf(stderr, "opening disk %s...\n", dsk->fn) ;
 
   long len = ftell(dsk->fp) ;
 
@@ -109,7 +107,6 @@ void pm_dev_dsk_rst (struct pm_dev_dsk_t * dsk)
     dsk->err = PM_DEV_DSK_ERR_RL ;
     return ;
   }
-  fprintf(stderr, "opening disk %s... 0x%08X\n", dsk->fn, len) ;
 
   if (fseek(dsk->fp, 0, SEEK_SET) < 0) {
     fclose(dsk->fp) ;
@@ -117,7 +114,6 @@ void pm_dev_dsk_rst (struct pm_dev_dsk_t * dsk)
     dsk->err = PM_DEV_DSK_ERR_SK ;
     return ;
   }
-  fprintf(stderr, "opening disk %s...\n", dsk->fn) ;
 
   if (0 == len || 0 != (len & 0x1FF)) {
     fclose(dsk->fp) ;
@@ -125,15 +121,12 @@ void pm_dev_dsk_rst (struct pm_dev_dsk_t * dsk)
     dsk->err = PM_DEV_DSK_ERR_IL ;
     return ;
   }
-  fprintf(stderr, "opening disk %s...\n", dsk->fn) ;
 
   dsk->len = len ;
   dsk->err = PM_DEV_DSK_NO_ERR ;
   dsk->sec = 0 ;
   dsk->bo  = __PM_ENDIAN ;
   _dev_dsk_ldsec(dsk) ;
-
-  fprintf(stderr, "opened %s, first word: 0x%02X%02X%02X%02X at 0x%08X\n", dsk->fn, dsk->buf[0], dsk->buf[1], dsk->buf[2], dsk->buf[3], dsk->dev.adr) ;
 }
 
 void pm_dev_dsk_clk (struct pm_dev_dsk_t * dsk)

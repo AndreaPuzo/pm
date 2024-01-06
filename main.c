@@ -32,23 +32,26 @@ struct sdl_trm_t {
   struct dev_fnt8x16_t fnt ;
 } ;
 
-static void _sdl_trm_put_chr (struct sdl_trm_t * trm, u_byte_t ofs_x, u_byte_t ofs_y, u_half_t chr) ;
+static int _sdl_trm_put_chr (struct sdl_trm_t * trm, char chr) ;
+static int _sdl_trm_put_str (struct sdl_trm_t * trm, const char * str) ;
+static void _sdl_trm_render_chr (struct sdl_trm_t * trm, u_byte_t ofs_x, u_byte_t ofs_y, u_half_t chr) ;
 
 int  sdl_trm_ctor (struct sdl_trm_t * trm) ;
 void sdl_trm_dtor (struct sdl_trm_t * trm) ;
 void sdl_trm_clk  (struct sdl_trm_t * trm) ;
 
-static void _boot (struct pm_bus_t * bus, struct sdl_trm_t * trm)
+static void _boot (struct pm_bus_t * bus, struct sdl_trm_t * trm, u_word_t exp)
 {
   fprintf(stderr, "\n") ;
 
   for (u_word_t adr = 0x00000000 ; adr < 0x80000000 ; adr += 0x200) {
-    fprintf(stderr, "\rtry to boot at 0x%08X...", adr) ;
     u_word_t mag = pm_bus_ldw(bus, adr) ;
 
-    if (0x4570FEED == mag) {
+    if (exp == mag) {
       char * hex = "0123456789ABCDEF" ;
 
+      _sdl_trm_put_str(trm, "BOOTING...") ;
+/*      
       pm_dev_scr_stb(&trm->scr, 0x10000, 'B') ;
       pm_dev_scr_stb(&trm->scr, 0x10001, 'O') ;
       pm_dev_scr_stb(&trm->scr, 0x10002, 'O') ;
@@ -70,7 +73,7 @@ static void _boot (struct pm_bus_t * bus, struct sdl_trm_t * trm)
       pm_dev_scr_stb(&trm->scr, 0x10012, hex[(adr >>  8) & 0xF]) ;
       pm_dev_scr_stb(&trm->scr, 0x10013, hex[(adr >>  4) & 0xF]) ;
       pm_dev_scr_stb(&trm->scr, 0x10014, hex[(adr >>  0) & 0xF]) ;
-      
+*/      
       fprintf(stderr, "\n") ;
       return ; 
     }
@@ -331,7 +334,7 @@ _read_mem_len :
 
   for (unsigned int i = 0 ; 1 ; ++i) {
     if (i == 100) {
-      _boot(&bus, &trm) ;
+      _boot(&bus, &trm, 0x4570FEED) ;
     }
 
 //    fprintf(stderr, "clock %u / halt %u\n", bus.cpu.ck0, bus.hlt) ;
@@ -581,6 +584,8 @@ void sdl_trm_clk (struct sdl_trm_t * trm)
     case SDL_TEXTINPUT : {
       const char * txt = event.text.text ;
 
+      _sdl_trm_put_str(trm, txt) ;
+
       for (int idx = 0 ; 0 != txt[idx] ; ++idx) {
         pm_dev_kbr_enq(&trm->kbr, (u_byte_t)txt[idx]) ;
       }
@@ -595,11 +600,8 @@ void sdl_trm_clk (struct sdl_trm_t * trm)
 
   for (int i = 0 ; i < trm->scr.len_y ; ++i) {
     for (int j = 0 ; j < trm->scr.len_x ; ++j) {
-      u_half_t chr = trm->scr.buf[i * trm->scr.len_y + j] ;
+      u_half_t chr = trm->scr.buf[i * trm->scr.len_x + j] ;
       
-//    u_word_t glyph_adr = trm->scr.fnt + (chr & 0xFF) * 0x10 ;
-//    fprintf(stderr, "( % 3u,% 3u ) 0x%04X (%c)\t", i, j, chr,
-//        (' ' <= (chr & 0xFF) && (chr & 0xFF) <= '~') ? (chr & 0xFF) : '?') ;
       if (i == trm->scr.cur_y && j == trm->scr.cur_x) {
         chr =
           (((chr >> 12) & 0x0F) <<  8) |
@@ -607,9 +609,8 @@ void sdl_trm_clk (struct sdl_trm_t * trm)
           (((chr >>  0) & 0xFF) <<  0)
         ;
       }      
-//    fprintf(stderr, "0x%04X\t\taddress: 0x%08X\n", chr, glyph_adr) ;
 
-      _sdl_trm_put_chr(trm, j, i, chr) ;
+      _sdl_trm_render_chr(trm, j, i, chr) ;
     }
   }
 
@@ -618,7 +619,80 @@ void sdl_trm_clk (struct sdl_trm_t * trm)
   trm->scr.edit = 0 ;
 }
 
-static void _sdl_trm_put_chr (struct sdl_trm_t * trm, u_byte_t ofs_x, u_byte_t ofs_y, u_half_t chr)
+static int _sdl_trm_put_chr (struct sdl_trm_t * trm, char chr)
+{
+  if (chr == '\t') {
+    int tab0 = _sdl_trm_put_chr(trm, ' ') ;
+    int tab1 = _sdl_trm_put_chr(trm, ' ') ;
+
+    if (tab0 < 0)
+      return tab0 ;
+
+    if (tab1 < 0)
+      return tab0 ;
+
+    return 2 ;
+  }
+
+  if (chr == '\n') {
+    if (trm->scr.cur_y < trm->scr.len_y - 1) {
+      ++trm->scr.cur_y ;
+      trm->scr.edit = 1 ;
+    }
+
+    return 1 ;
+  }
+
+  if (chr == '\r') {
+    trm->scr.cur_x = 0 ;
+    trm->scr.edit  = 1 ;
+    return 1 ;
+  }
+
+  if (chr == '\b') {
+    if (0 < trm->scr.cur_x) {
+      --trm->scr.cur_x ;
+      trm->scr.edit = 1 ;
+    }
+
+    return 1 ;
+  }
+
+  pm_dev_scr_stb(&trm->scr, 0x10000 + (trm->scr.cur_y * trm->scr.len_x + trm->scr.cur_x), chr) ;
+  ++trm->scr.cur_x ;
+
+  if (trm->scr.cur_x == trm->scr.len_x) {
+    if (trm->scr.cur_y < trm->scr.len_y - 1) {
+      trm->scr.cur_x = 0 ;
+      ++trm->scr.cur_y ;
+    } else {
+      --trm->scr.cur_x ;
+      return -1 ;
+    }
+  }
+
+//  fprintf(stderr, "( %03u,%03u ) `%c`\n", trm->scr.cur_y, trm->scr.cur_x, (' ' <= chr && chr <= '~') ? chr : '?') ;
+
+  return 1 ;
+}
+
+static int _sdl_trm_put_str (struct sdl_trm_t * trm, const char * str)
+{
+   int len = 0 ;
+
+   while ('\0' != str[len]) {
+    int res = _sdl_trm_put_chr(trm, str[len]) ;
+
+    if (res < 0)
+      break ;
+
+    len += res ;
+   }
+
+   return len ;
+}
+
+static void _sdl_trm_render_chr (struct sdl_trm_t * trm, u_byte_t ofs_x, u_byte_t ofs_y, u_half_t chr)
 {
   int fgc = (chr >> 12) & 0xF  ;
   int bgc = (chr >>  8) & 0xF  ;
