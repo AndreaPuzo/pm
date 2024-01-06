@@ -1,0 +1,7 @@
+*.swp
+dev/*.swp
+*.o
+*.obj
+stdout*
+stderr*
+stdin*
