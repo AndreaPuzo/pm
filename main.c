@@ -336,7 +336,7 @@ _read_mem_len :
     goto failure ;
   }
 
-  pm_bus_rst(&bus) ;
+  pm_bus_rst(&bus, -1) ;
 
   for (unsigned int i = 0 ; 1 ; ++i) {
     if (i == 100) {
