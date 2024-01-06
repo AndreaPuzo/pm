@@ -1,5 +1,6 @@
-*.swp
-dev/*.swp
+.*
+.*.swp
+dev/.*.swp
 *.o
 *.obj
 stdout*
