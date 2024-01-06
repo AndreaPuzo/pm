@@ -2,6 +2,7 @@
 #include "dev/tmr.h"
 #include "dev/scr.h"
 #include "dev/kbr.h"
+#include "dev/dsk.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,11 +38,62 @@ int  sdl_trm_ctor (struct sdl_trm_t * trm) ;
 void sdl_trm_dtor (struct sdl_trm_t * trm) ;
 void sdl_trm_clk  (struct sdl_trm_t * trm) ;
 
+static void _boot (struct pm_bus_t * bus, struct sdl_trm_t * trm)
+{
+  fprintf(stderr, "\n") ;
+
+  for (u_word_t adr = 0x00000000 ; adr < 0x80000000 ; adr += 0x200) {
+    fprintf(stderr, "\rtry to boot at 0x%08X...", adr) ;
+    u_word_t mag = pm_bus_ldw(bus, adr) ;
+
+    if (0x4570FEED == mag) {
+      char * hex = "0123456789ABCDEF" ;
+
+      pm_dev_scr_stb(&trm->scr, 0x10000, 'B') ;
+      pm_dev_scr_stb(&trm->scr, 0x10001, 'O') ;
+      pm_dev_scr_stb(&trm->scr, 0x10002, 'O') ;
+      pm_dev_scr_stb(&trm->scr, 0x10003, 'T') ;
+      pm_dev_scr_stb(&trm->scr, 0x10004, 'I') ;
+      pm_dev_scr_stb(&trm->scr, 0x10005, 'N') ;
+      pm_dev_scr_stb(&trm->scr, 0x10006, 'G') ;
+      pm_dev_scr_stb(&trm->scr, 0x10007, ' ') ;
+      pm_dev_scr_stb(&trm->scr, 0x10008, 'A') ;
+      pm_dev_scr_stb(&trm->scr, 0x10009, 'T') ;
+      pm_dev_scr_stb(&trm->scr, 0x1000A, ' ') ;
+      pm_dev_scr_stb(&trm->scr, 0x1000B, '0') ;
+      pm_dev_scr_stb(&trm->scr, 0x1000C, 'X') ;
+      pm_dev_scr_stb(&trm->scr, 0x1000D, hex[(adr >> 28) & 0xF]) ;
+      pm_dev_scr_stb(&trm->scr, 0x1000E, hex[(adr >> 24) & 0xF]) ;
+      pm_dev_scr_stb(&trm->scr, 0x1000F, hex[(adr >> 20) & 0xF]) ;
+      pm_dev_scr_stb(&trm->scr, 0x10010, hex[(adr >> 16) & 0xF]) ;
+      pm_dev_scr_stb(&trm->scr, 0x10011, hex[(adr >> 12) & 0xF]) ;
+      pm_dev_scr_stb(&trm->scr, 0x10012, hex[(adr >>  8) & 0xF]) ;
+      pm_dev_scr_stb(&trm->scr, 0x10013, hex[(adr >>  4) & 0xF]) ;
+      pm_dev_scr_stb(&trm->scr, 0x10014, hex[(adr >>  0) & 0xF]) ;
+      
+      fprintf(stderr, "\n") ;
+      return ; 
+    }
+  }
+
+  pm_dev_scr_sth(&trm->scr, 0x10000, 0x9000 | 'F') ;
+  pm_dev_scr_sth(&trm->scr, 0x10001, 0x9000 | 'A') ;
+  pm_dev_scr_sth(&trm->scr, 0x10002, 0x9000 | 'I') ;
+  pm_dev_scr_sth(&trm->scr, 0x10003, 0x9000 | 'L') ;
+  pm_dev_scr_sth(&trm->scr, 0x10004, 0x9000 | 'E') ;
+  pm_dev_scr_sth(&trm->scr, 0x10005, 0x9000 | 'D') ;
+
+  fprintf(stderr, "\n") ;
+}
+
 int main (int argc, char ** argv)
 {
-  char *   img_fn  = NULL      ;
-  u_word_t ram_len = 0x2000000 ;
-  int      arg_ofs = -1        ;
+  char *   cdroms [ 2 ] = { NULL, NULL } ;
+  int      cdromc       = 0         ;
+  char *   hdds   [ 4 ] = { NULL, NULL, NULL, NULL } ;
+  int      hddc         = 0         ;
+  u_word_t mem_len      = 0x2000000 ;
+  int      arg_ofs      = -1        ;
 
   for (int idx = 1 ; idx < argc ; ++idx) {
     char * args = argv[idx] ;
@@ -49,7 +101,7 @@ int main (int argc, char ** argv)
     if (0 == strcmp(args, "--help") || 0 == strcmp(args, "-h")) {
       fprintf(
         stdout ,
-        "usage: %s [options] IMG\n"
+        "usage: %s [options]\n"
         "usage: %s --help|-h\n"
         "options:\n"
         "  -h, --help    : print this message.\n"
@@ -57,7 +109,9 @@ int main (int argc, char ** argv)
         "  -m, --mem NUM : set NUM as the memory length.\n"
         "  -a, --arg ... : ... are passed as arguments to\n"
         "                  the machine through a special\n"
-        "                  device.\n" ,
+        "                  device.\n"
+        "  --cdrom=STR   : attach a read-only memory.\n"
+        "  --hdd=STR     : attach a read-write memory.\n" ,
         argv[0] ,
         argv[0]
       ) ;
@@ -94,37 +148,104 @@ int main (int argc, char ** argv)
 
       args = argv[++idx] ;
 
-_read_ram_len :
+_read_mem_len :
       char * str    = args ;
       char * endptr = NULL ;
 
-      ram_len = (u_word_t)strtoul(str, &endptr, 0) ;
+      mem_len = (u_word_t)strtoul(str, &endptr, 0) ;
 
       if (NULL != endptr) {
         if (0 == strcmp(endptr, "K")) {
-          ram_len <<= 10 ;
+          mem_len <<= 10 ;
         } else if (0 == strcmp(endptr, "M")) {
-          ram_len <<= 20 ;
+          mem_len <<= 20 ;
         } else if (0 == strcmp(endptr, "G")) {
-          ram_len <<= 30 ;
+          mem_len <<= 30 ;
         }
       }
 
-      if (0x80000000 < ram_len) {
+      if (0x80000000 < mem_len) {
         fprintf(stderr, "error: too much memory for working memory\n") ;
         return EXIT_FAILURE ;
       }
     } else if (0 == strncmp(args, "--mem=", 6)) {
       args += 6 ;
-      goto _read_ram_len ;
-    } else {
-      img_fn = args ;
+      goto _read_mem_len ;
+    } else if (0 == strncmp(args, "--cdrom=", 8) || 0 == strncmp(args, "--hdd=", 6)) {
+      int is_cdrom = 0 ;
+
+      if ('c' == args[2]) {
+        args += 8 ;
+        is_cdrom = 1 ;
+      } else {
+        args += 6 ;
+      }
+
+      char quote = '\0' ;
+
+      if ('\'' == args[0] || '\"' == args[0]) {
+        quote = *args++ ;
+      }
+
+      if (0 != is_cdrom) {
+        if (cdromc == sizeof(cdroms) / sizeof(cdroms[0])) {
+          fprintf(stderr, "error: too many cdroms has been attached\n") ;
+          return EXIT_FAILURE ;
+        }
+
+        cdroms[cdromc++] = args ;
+      } else {
+        if (hddc == sizeof(hdds) / sizeof(hdds[0])) {
+          fprintf(stderr, "error: too many hard-disks has been attached\n") ;
+          return EXIT_FAILURE ;
+        }
+
+        hdds[hddc++] = args ;
+      }
+
+      while (quote != *args && '\0' != *args) {
+        ++args ;
+      }
+
+      *args = '\0' ;
     }
+  }
+
+  if (0 < arg_ofs) {
+    FILE * fp = fopen("args", "w") ;
+
+    if (NULL == fp) {
+      fprintf(stderr, "error: cannot create the disk to store the arguments\n") ;
+      return EXIT_FAILURE ;
+    }
+
+    for (int idx = 0 ; idx < 0x200 ; ++idx) {
+      fputc(0x00, fp) ;
+    }
+
+    fseek(fp, 0, SEEK_SET) ;
+    fputc(0x45, fp) ;
+    fputc(0x70, fp) ;
+    fputc(0xFE, fp) ;
+    fputc(0xED, fp) ;
+
+    for (int idx = arg_ofs ; idx < argc ; ++idx) {
+      char * arg = argv[idx] ;
+      size_t len = strlen(arg) + 1 ;
+
+      if (len != fwrite(arg, sizeof(char), len, fp)) {
+        fclose(fp) ;
+        fprintf(stderr, "error: cannot write the %u-th argument\n", idx - arg_ofs + 1) ;
+        return EXIT_FAILURE ;
+      }
+    }
+
+    fclose(fp) ;
   }
 
   static struct pm_bus_t     bus ;
   static struct pm_dev_tmr_t tmr [ 4 ] ;
-  static struct pm_dev_dsk_t dsk [ 4 ] ;
+  static struct pm_dev_dsk_t dsk [ 6 + 1 ] ;
   static struct sdl_trm_t    trm ;
 
   for (int idx = 0 ; idx < 4 ; ++idx) {
@@ -138,7 +259,9 @@ _read_ram_len :
     tmr[idx].dev.ldb = (pm_dev_ldb_t)NULL ;
     tmr[idx].dev.ldh = (pm_dev_ldh_t)NULL ;
     tmr[idx].dev.ldw = (pm_dev_ldw_t)pm_dev_tmr_ldw ;
+  }
 
+  for (int idx = 0 ; idx < 6 + 1 ; ++idx) {
     dsk[idx].dev.adr = 0x20000000 + (idx * 0x400) ;
     dsk[idx].dev.len = 0x400 ;
     dsk[idx].dev.rst = (pm_dev_rst_t)pm_dev_dsk_rst ;
@@ -148,10 +271,23 @@ _read_ram_len :
     dsk[idx].dev.stw = (pm_dev_stw_t)pm_dev_dsk_stw ;
     dsk[idx].dev.ldb = (pm_dev_ldb_t)pm_dev_dsk_ldb ;
     dsk[idx].dev.ldh = (pm_dev_ldh_t)pm_dev_dsk_ldh ;
-    dsk[idx].dev.ldw = (pm_dev_ldw_t)pm_dev_tmr_ldw ;
+    dsk[idx].dev.ldw = (pm_dev_ldw_t)pm_dev_dsk_ldw ;
+
+    dsk[idx].fp = NULL ;
+
+    if (1 <= idx && idx <= 2) {
+      dsk[idx].fn = cdroms[idx - 1] ;
+      dsk[idx].dev.stb = NULL ;
+      dsk[idx].dev.sth = NULL ;
+      dsk[idx].dev.stw = NULL ;
+    } else if (3 <= idx && idx <= 6) {
+      dsk[idx].fn = hdds[idx - 3] ;
+    } else {
+      dsk[idx].fn = "args" ;
+    }
   }
 
-  if (0 != pm_bus_ctor(&bus, ram_len)) {
+  if (0 != pm_bus_ctor(&bus, mem_len)) {
     fprintf(stderr, "Ops... Something has gone wrong during bus configuration.\n") ;
     return EXIT_FAILURE ;
   }
@@ -165,6 +301,13 @@ _read_ram_len :
   for (int idx = 0 ; idx < 4 ; ++idx) {
     if (0 != pm_bus_mnt(&bus, (struct pm_dev_t *)(tmr + idx))) {
       fprintf(stderr, "error: cannot mount timer %u\n", idx) ;
+      goto failure ;
+    }
+  }
+
+  for (int idx = 0 ; idx < 6 + 1 ; ++idx) {
+    if (0 != pm_bus_mnt(&bus, (struct pm_dev_t *)(dsk + idx))) {
+      fprintf(stderr, "error: cannot mount disk %u\n", idx) ;
       goto failure ;
     }
   }
@@ -186,7 +329,12 @@ _read_ram_len :
 
   pm_bus_rst(&bus) ;
 
-  for (;;) {
+  for (unsigned int i = 0 ; 1 ; ++i) {
+    if (i == 100) {
+      _boot(&bus, &trm) ;
+    }
+
+//    fprintf(stderr, "clock %u / halt %u\n", bus.cpu.ck0, bus.hlt) ;
     pm_bus_clk(&bus) ;
     sdl_trm_clk(&trm) ;
 
@@ -213,8 +361,7 @@ void dev_fnt8x16_rst (struct dev_fnt8x16_t * fnt)
 #include "fnt8x16.def"
   } ;
 
-  memset(fnt->buf, 0, sizeof(fnt->buf)) ;
-  memcpy(fnt->buf + 0x10 * 0x20, fnt8x16, sizeof(fnt8x16)) ;
+  memcpy(fnt->buf, fnt8x16, sizeof(fnt8x16)) ;
 
 /*
   for (int i = 0 ; i < 0x100 ; ++i) {
@@ -450,7 +597,9 @@ void sdl_trm_clk (struct sdl_trm_t * trm)
     for (int j = 0 ; j < trm->scr.len_x ; ++j) {
       u_half_t chr = trm->scr.buf[i * trm->scr.len_y + j] ;
       
-//    fprintf(stderr, "( % 3u,% 3u ) 0x%04X\t", i, j, chr) ;
+//    u_word_t glyph_adr = trm->scr.fnt + (chr & 0xFF) * 0x10 ;
+//    fprintf(stderr, "( % 3u,% 3u ) 0x%04X (%c)\t", i, j, chr,
+//        (' ' <= (chr & 0xFF) && (chr & 0xFF) <= '~') ? (chr & 0xFF) : '?') ;
       if (i == trm->scr.cur_y && j == trm->scr.cur_x) {
         chr =
           (((chr >> 12) & 0x0F) <<  8) |
@@ -458,7 +607,7 @@ void sdl_trm_clk (struct sdl_trm_t * trm)
           (((chr >>  0) & 0xFF) <<  0)
         ;
       }      
-//    fprintf(stderr, "0x%04X\n", chr) ;
+//    fprintf(stderr, "0x%04X\t\taddress: 0x%08X\n", chr, glyph_adr) ;
 
       _sdl_trm_put_chr(trm, j, i, chr) ;
     }
@@ -478,7 +627,7 @@ static void _sdl_trm_put_chr (struct sdl_trm_t * trm, u_byte_t ofs_x, u_byte_t o
   u_word_t glyph_adr = trm->scr.fnt + cod * 0x10 ;
 
   for (int row = 0 ; row < 0x10 ; ++row) {
-    u_byte_t dat = pm_bus_ldb(trm->scr.dev.bus->bus, glyph_adr) ;
+    u_byte_t dat = pm_bus_ldb(trm->scr.dev.bus->bus, glyph_adr + row) ;
 
     for (int col = 0 ; col < 0x08 ; ++col) {
       int x = (ofs_x * 0x08) + col ;

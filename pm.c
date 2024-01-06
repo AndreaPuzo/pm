@@ -2,6 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <stdio.h>
+#define DEBUG_0(msg)      fprintf(stderr, msg)
+#define DEBUG_1(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)
+
+
 /* Central Processing Unit */
 
 static void     _cpu_psb   (struct pm_cpu_t * cpu, u_word_t * sp, u_byte_t dat) ;
@@ -1138,6 +1143,7 @@ void pm_iom_stw (struct pm_iom_t * iom, u_word_t adr, u_word_t dat)
         continue ;                             \
                                                \
       ofs = adr - dev->adr ;                   \
+      /* DEBUG_1("\naddress: 0x%08X, offset: 0x%08X, length: 0x%08X, id: %u\n", adr, ofs, dev->len, dev->id) ; */ \
       if (ofs < dev->len) {                    \
         dat = dev->ld##typ(dev, adr) ;         \
         return dat ;                           \

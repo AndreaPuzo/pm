@@ -14,7 +14,7 @@
 
 # define __PM_ENDIAN_LE 0x01234567 /* little endian */
 # define __PM_ENDIAN_BE 0x67452301 /* big endian    */
-# define __PM_ENDIAN    __PM_ENDIAN_LE /* change it to select the memory endian */
+# define __PM_ENDIAN    __PM_ENDIAN_BE /* change it to select the memory endian */
 
 # include <stdint.h>
 

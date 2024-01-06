@@ -2,6 +2,7 @@
 # define __PM_DEV_DSK_H
 
 # include "../pm.h"
+# include <stdio.h>
 
 # define PM_DEV_DSK_NO_ERR 0
 # define PM_DEV_DSK_ERR_NF 1
@@ -16,7 +17,7 @@ struct pm_dev_dsk_t {
   struct pm_dev_t dev ;
   char *          fn  ;
   FILE *          fp  ;
-  u_byte_t        bo  ;
+  u_word_t        bo  ;
   u_word_t        err ;
   u_word_t        len ;
   u_word_t        sec ;
