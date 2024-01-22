@@ -13,8 +13,7 @@ void pm_dev_kbr_rst (struct pm_dev_kbr_t * kbr)
 }
 
 void pm_dev_kbr_clk (struct pm_dev_kbr_t * kbr)
-{
-}
+{}
 
 void pm_dev_kbr_stb (struct pm_dev_kbr_t * kbr, u_word_t adr, u_byte_t dat)
 {

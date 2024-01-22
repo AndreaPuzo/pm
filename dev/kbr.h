@@ -8,7 +8,7 @@ struct pm_dev_kbr_t {
   u_byte_t        front ;
   u_byte_t        rear  ;
   u_byte_t        queue [ 0x400 ] ;
-} ;
+};
 
 void     pm_dev_kbr_rst (struct pm_dev_kbr_t * kbr) ;
 void     pm_dev_kbr_clk (struct pm_dev_kbr_t * kbr) ;
