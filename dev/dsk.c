@@ -125,7 +125,7 @@ void pm_dev_dsk_rst (struct pm_dev_dsk_t * dsk)
   dsk->len = len ;
   dsk->err = PM_DEV_DSK_NO_ERR ;
   dsk->sec = 0 ;
-  dsk->bo  = __PM_ENDIAN ;
+/* dsk->bo  = __PM_ENDIAN ; */
   _dev_dsk_ldsec(dsk) ;
 }
 
@@ -241,9 +241,6 @@ u_byte_t pm_dev_dsk_ldb (struct pm_dev_dsk_t * dsk, u_word_t adr)
 {
   u_half_t dat = 0 ;
 
-  if (0 != (adr & 0x1))
-    return dat ;
-
   switch (adr) {
   case 0x00 :
     /* fallthrough */
@@ -322,7 +319,7 @@ u_word_t pm_dev_dsk_ldw (struct pm_dev_dsk_t * dsk, u_word_t adr)
   } break ;
 
   case 0x08 : {
-    /* ignored */
+    dat = dsk->sec ;
   } break ;
 
   case 0x0C : {
@@ -384,4 +381,6 @@ static void _dev_dsk_ldsec (struct pm_dev_dsk_t * dsk)
     dsk->err = PM_DEV_DSK_ERR_RS ;
     return ;
   }
+
+  fprintf(stderr, "sector 0x%08X loaded from %s [0x%08X;0x%08X]\n", dsk->sec, dsk->fn, dsk->dev.adr, dsk->dev.adr + dsk->dev.len - 1) ;
 }
