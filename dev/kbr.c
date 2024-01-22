@@ -5,8 +5,8 @@ void pm_dev_kbr_rst (struct pm_dev_kbr_t * kbr)
   kbr->front = 0 ;
   kbr->rear  = 0 ;
 
-  for (int idx = 0 ; idx < 0x20 ; ++idx) {
-    kbr->queue[idx] = 0 ;
+  for (int idx = 0 ; idx < sizeof(kbr->queue) ; ++idx) {
+    kbr->queue[idx] = 0xFF ;
   }
 
   pm_iom_int(kbr->dev.bus, (struct pm_dev_t *)kbr) ;
@@ -56,24 +56,28 @@ u_byte_t pm_dev_kbr_ldb (struct pm_dev_kbr_t * kbr, u_word_t adr)
 
 void pm_dev_kbr_enq (struct pm_dev_kbr_t * kbr, u_byte_t chr)
 {
-  if (kbr->front == ((kbr->rear + 1) & 0x1F)) {
+  u_word_t msk = sizeof(kbr->queue) - 1 ;
+
+  if (kbr->front == ((kbr->rear + 1) & msk)) {
     pm_iom_int(kbr->dev.bus, (struct pm_dev_t *)kbr) ;
     return ;
   }
 
   kbr->queue[kbr->rear] = chr ;
-  kbr->rear = (kbr->rear + 1) & 0x1F ;
+  kbr->rear = (kbr->rear + 1) & msk ;
 }
 
 u_byte_t pm_dev_kbr_deq (struct pm_dev_kbr_t * kbr)
 {
+  u_word_t msk = sizeof(kbr->queue) - 1 ;
+
   if (kbr->front == kbr->rear) {
     pm_iom_int(kbr->dev.bus, (struct pm_dev_t *)kbr) ;
-    return 0 ;
+    return 0xFF ;
   }
 
   u_byte_t chr = kbr->queue[kbr->front] ;
-  kbr->front = (kbr->front + 1) & 0x1F ;
+  kbr->front = (kbr->front + 1) & msk ;
 
   return chr ;
 }
