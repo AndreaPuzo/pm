@@ -1,1 +1,0 @@
-Expand the keyboard queue up to 1024 bytes to handle the keyboard pressed keys (max 256 1-byte each), and released keys (max 256 2-bytes each).
