@@ -477,14 +477,22 @@ _read_mem_len :
       break ;
   }
 
-  for (;;) {
+  for (int i = 1 ; i > 0 ; i += 1) {
     trm.rows = trm.scr.len_y ;
     trm.cols = trm.scr.len_x ;
+    fprintf(stderr, "\rclock %d : %u;%u ", i, trm.rows, trm.cols) ;
 
     if (4 == trm.quit) {
       pm_bus_clk(&bus) ;
       _dump_cpu(&bus.cpu, &trm) ;
       trm.quit = 0 ;
+    }
+
+    if (i == 1000) {
+      fprintf(stderr, "terminal has been changed.\n") ;
+      trm.scr.len_y = 32  ;
+      trm.scr.len_x = 128 ;
+      trm.scr.edit  = 1   ;
     }
 
     sdl_trm_clk(&trm) ;
@@ -641,7 +649,7 @@ void sdl_trm_clk (struct sdl_trm_t * trm)
   if (0 == trm->scr.edit)
     return ;
 
-  if (trm->scr.rows != trm->scr.len_y || trm->scr.cols != trm->scr.len_x) {
+  if (trm->rows != trm->scr.len_y || trm->cols != trm->scr.len_x) {
     if (NULL != trm->renderer) {
       SDL_DestroyRenderer(trm->renderer) ;
     }
