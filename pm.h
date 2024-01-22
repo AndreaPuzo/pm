@@ -88,6 +88,7 @@ struct pm_cpu_t {
   u_word_t          ck1 ;
   u_word_t          csr [ 0x20 ] ;
   u_word_t          xpr [ 0x20 ] ;
+  u_word_t          ins ;
 } ;
 
 int      pm_cpu_ctor (struct pm_cpu_t * cpu, struct pm_bus_t * bus) ;

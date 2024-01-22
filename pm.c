@@ -158,6 +158,7 @@ void pm_cpu_clk (struct pm_cpu_t * cpu)
   /* fetch the next instruction */
 
   s_word_t ins = _cpu_fch(cpu) ;
+  cpu->ins = ins ;
 
   /* decode the instruction */
 
@@ -1129,7 +1130,7 @@ void pm_iom_clk (struct pm_iom_t * iom)
                                                \
       ofs = adr - dev->adr ;                   \
       if (ofs < dev->len) {                    \
-        dev->st##typ(dev, adr, dat) ;          \
+        dev->st##typ(dev, ofs, dat) ;          \
         return ;                               \
       }                                        \
     }                                          \
@@ -1166,7 +1167,7 @@ void pm_iom_stw (struct pm_iom_t * iom, u_word_t adr, u_word_t dat)
       ofs = adr - dev->adr ;                   \
       /* DEBUG_1("\naddress: 0x%08X, offset: 0x%08X, length: 0x%08X, id: %u\n", adr, ofs, dev->len, dev->id) ; */ \
       if (ofs < dev->len) {                    \
-        dat = dev->ld##typ(dev, adr) ;         \
+        dat = dev->ld##typ(dev, ofs) ;         \
         return dat ;                           \
       }                                        \
     }                                          \
@@ -1312,10 +1313,7 @@ void pm_bus_clk (struct pm_bus_t * bus)
     }                                       \
                                             \
     ofs = adr - bus->iom.adr ;              \
-    if (                                    \
-      ofs               <  bus->iom.len &&  \
-      ofs + sizeof(dat) <= bus->iom.len     \
-    ) {                                     \
+    if (ofs < bus->iom.len) {               \
       pm_iom_st##typ(&bus->iom, ofs, dat) ; \
       return ;                              \
     }                                       \
@@ -1355,10 +1353,7 @@ void pm_bus_stw (struct pm_bus_t * bus, u_word_t adr, u_word_t dat)
     }                                        \
                                              \
     ofs = adr - bus->iom.adr ;               \
-    if (                                     \
-      ofs               <  bus->iom.len &&   \
-      ofs + sizeof(dat) <= bus->iom.len      \
-    ) {                                      \
+    if (ofs < bus->iom.len) {                \
       dat = pm_iom_ld##typ(&bus->iom, ofs) ; \
       return dat ;                           \
     }                                        \
