@@ -111,6 +111,10 @@ void pm_dev_scr_stb (struct pm_dev_scr_t * scr, u_word_t adr, u_byte_t dat)
     _dev_scr_hor_scroll_r(scr, dat) ;
   } break ;
 
+  case 0xF4 : {
+    _dev_scr_clr(scr) ;
+  } break ;
+
   default : {
     if (0 == (adr & 0x10000))
       break ;
@@ -326,6 +330,9 @@ u_word_t pm_dev_scr_ldw (struct pm_dev_scr_t * scr, u_word_t adr)
 
 static void _dev_scr_clr (struct pm_dev_scr_t * scr)
 {
+  scr->cur_x = 0 ;
+  scr->cur_y = 0 ;
+
   for (int idx = 0 ; idx < 0x10000 ; ++idx) {
     scr->buf[idx] = 0xF020 ;
   }
@@ -368,7 +375,7 @@ static void _dev_scr_ver_scroll_d (struct pm_dev_scr_t * scr, u_byte_t n)
     return ;
   }
 
-  for (int i = scr->len_y - 1 ; n <= i ; ++i) {
+  for (int i = scr->len_y - 1 ; n <= i ; --i) {
     for (int j = 0 ; j < scr->len_x ; ++j) {
       scr->buf[i * scr->len_x + j] = scr->buf[(i - n) * scr->len_x + j] ;
     }
