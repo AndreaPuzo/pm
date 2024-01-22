@@ -24,6 +24,8 @@ struct sdl_trm_t {
   SDL_Window *   window    ;
   SDL_Renderer * renderer  ;
   int            quit      ;
+  u_byte_t       rows      ;
+  u_byte_t       cols      ;
 
   /* devices */
 
@@ -476,6 +478,9 @@ _read_mem_len :
   }
 
   for (;;) {
+    trm.rows = trm.scr.len_y ;
+    trm.cols = trm.scr.len_x ;
+
     if (4 == trm.quit) {
       pm_bus_clk(&bus) ;
       _dump_cpu(&bus.cpu, &trm) ;
@@ -533,7 +538,7 @@ int sdl_trm_ctor (struct sdl_trm_t * trm)
   trm->scr.len_y = 25 ;
 
   trm->window = SDL_CreateWindow(
-    "PocketMachine"        ,
+    "Pocket Machine"       ,
     SDL_WINDOWPOS_CENTERED ,
     SDL_WINDOWPOS_CENTERED ,
     trm->scr.len_x * 0x08  ,
@@ -617,7 +622,7 @@ void sdl_trm_clk (struct sdl_trm_t * trm)
     } break ;
 
     case SDL_KEYDOWN : {
-      if (event.key.keysym.sym == SDLK_UP) {
+      if (event.key.keysym.sym == SDLK_SPACE) {
         trm->quit = 4 ;
       }
 
@@ -627,7 +632,7 @@ void sdl_trm_clk (struct sdl_trm_t * trm)
 
     case SDL_KEYUP : {
       u_byte_t key = event.key.keysym.scancode ;
-      pm_dev_kbr_enq(&trm->kbr, 0xFF) ;
+      pm_dev_kbr_enq(&trm->kbr, 0xF0) ;
       pm_dev_kbr_enq(&trm->kbr, key) ;
     } break ;
     }
@@ -635,6 +640,41 @@ void sdl_trm_clk (struct sdl_trm_t * trm)
   
   if (0 == trm->scr.edit)
     return ;
+
+  if (trm->scr.rows != trm->scr.len_y || trm->scr.cols != trm->scr.len_x) {
+    if (NULL != trm->renderer) {
+      SDL_DestroyRenderer(trm->renderer) ;
+    }
+
+    if (NULL != trm->window) {
+      SDL_DestroyWindow(trm->window) ;
+    }
+
+    trm->window = SDL_CreateWindow(
+      "Pocket Machine"       ,
+      SDL_WINDOWPOS_CENTERED ,
+      SDL_WINDOWPOS_CENTERED ,
+      trm->scr.len_x * 0x08  ,
+      trm->scr.len_y * 0x10  ,
+      0
+    ) ;
+
+    if (NULL == trm->window) {
+      fprintf(stderr, "error: %s\n", SDL_GetError()) ;
+      return ;
+    }
+
+    trm->renderer = SDL_CreateRenderer(
+      trm->window              ,
+      -1                       ,
+      SDL_RENDERER_ACCELERATED
+    ) ;
+
+    if (NULL == trm->renderer) {
+      fprintf(stderr, "error: %s\n", SDL_GetError()) ;
+      return ;
+    }
+  }
 
   SDL_RenderClear(trm->renderer) ;
 
