@@ -42,57 +42,155 @@ int  sdl_trm_ctor (struct sdl_trm_t * trm) ;
 void sdl_trm_dtor (struct sdl_trm_t * trm) ;
 void sdl_trm_clk  (struct sdl_trm_t * trm) ;
 
-static void _boot (struct pm_bus_t * bus, struct sdl_trm_t * trm, u_word_t exp)
+static void _dump_dec (struct sdl_trm_t * trm, int fg, int bg, int val)
 {
-//  fprintf(stderr, "booting...\n") ;
-  _sdl_trm_put_str(trm, "BOOTING...") ;
+  int tmp = val ;
+  int dgs = 0 ;
 
-  for (u_word_t adr = 0x00000000 ; adr < 0x80000000 ; adr += 0x200) {
-    u_word_t mag = pm_bus_ldw(bus, adr) ;
-//    fprintf(stderr, "\r0x%08X\t\t0x%08X\\0x%08X", adr, mag, exp) ;
+  do {
+    tmp /= 10 ;
+    ++dgs ;
+  } while (0 != tmp) ;
 
-    if (exp == mag) {
-//      char * hex = "0123456789ABCDEF" ;
+  const int siz = dgs ;
+  char      str [siz + 1] ;
 
-//      fprintf(stderr, "\npassed.\n") ;
-      _sdl_trm_put_col_str(trm, 0xA, 0x0, " PASSED") ;
-/*      
-      pm_dev_scr_stb(&trm->scr, 0x10000, 'B') ;
-      pm_dev_scr_stb(&trm->scr, 0x10001, 'O') ;
-      pm_dev_scr_stb(&trm->scr, 0x10002, 'O') ;
-      pm_dev_scr_stb(&trm->scr, 0x10003, 'T') ;
-      pm_dev_scr_stb(&trm->scr, 0x10004, 'I') ;
-      pm_dev_scr_stb(&trm->scr, 0x10005, 'N') ;
-      pm_dev_scr_stb(&trm->scr, 0x10006, 'G') ;
-      pm_dev_scr_stb(&trm->scr, 0x10007, ' ') ;
-      pm_dev_scr_stb(&trm->scr, 0x10008, 'A') ;
-      pm_dev_scr_stb(&trm->scr, 0x10009, 'T') ;
-      pm_dev_scr_stb(&trm->scr, 0x1000A, ' ') ;
-      pm_dev_scr_stb(&trm->scr, 0x1000B, '0') ;
-      pm_dev_scr_stb(&trm->scr, 0x1000C, 'X') ;
-      pm_dev_scr_stb(&trm->scr, 0x1000D, hex[(adr >> 28) & 0xF]) ;
-      pm_dev_scr_stb(&trm->scr, 0x1000E, hex[(adr >> 24) & 0xF]) ;
-      pm_dev_scr_stb(&trm->scr, 0x1000F, hex[(adr >> 20) & 0xF]) ;
-      pm_dev_scr_stb(&trm->scr, 0x10010, hex[(adr >> 16) & 0xF]) ;
-      pm_dev_scr_stb(&trm->scr, 0x10011, hex[(adr >> 12) & 0xF]) ;
-      pm_dev_scr_stb(&trm->scr, 0x10012, hex[(adr >>  8) & 0xF]) ;
-      pm_dev_scr_stb(&trm->scr, 0x10013, hex[(adr >>  4) & 0xF]) ;
-      pm_dev_scr_stb(&trm->scr, 0x10014, hex[(adr >>  0) & 0xF]) ;
-*/      
-      return ; 
-    }
+  str[dgs] = '\0' ;
+
+  do {
+    str[--dgs] = '0' + (val % 10) ;
+    val /= 10 ;
+  } while (0 != val) ;
+
+  _sdl_trm_put_col_str(trm, fg, bg, str + dgs) ;
+}
+
+static void _dump_hex (struct sdl_trm_t * trm, int fg, int bg, u_word_t val)
+{
+  static char hex [] = "0123456789ABCDEF" ;
+  
+  char str [] = {
+    '0', 'X',
+    hex[(val >> 28) & 0xF] ,
+    hex[(val >> 24) & 0xF] ,
+    hex[(val >> 20) & 0xF] ,
+    hex[(val >> 16) & 0xF] ,
+    hex[(val >> 12) & 0xF] ,
+    hex[(val >>  8) & 0xF] ,
+    hex[(val >>  4) & 0xF] ,
+    hex[(val >>  0) & 0xF] ,
+    '\0'
+  } ;
+
+  _sdl_trm_put_col_str(trm, fg, bg, str) ;
+}
+
+static int _boot (struct pm_bus_t * bus, struct sdl_trm_t * trm, u_word_t exp)
+{
+  static u_word_t adr = 0x20000000 ;
+
+  _sdl_trm_put_str(trm, "\r[") ;
+  _sdl_trm_put_col_str(trm, 0xB, 0x0, " ------ ") ;
+  _sdl_trm_put_str(trm, "] BOOTING ") ;
+
+  if (0x80000000 <= adr) {
+    _sdl_trm_put_col_str(trm, 0x9, 0x0, "\rNO BOOTLOADER HAS BEEN FOUND") ;
+    return -1 ;
   }
 
-//  fprintf(stderr, "\nfailed.\n") ;
-  _sdl_trm_put_col_str(trm, 0x9, 0x0, " FAILED") ;
-/*
-  pm_dev_scr_sth(&trm->scr, 0x10000, 0x9000 | 'F') ;
-  pm_dev_scr_sth(&trm->scr, 0x10001, 0x9000 | 'A') ;
-  pm_dev_scr_sth(&trm->scr, 0x10002, 0x9000 | 'I') ;
-  pm_dev_scr_sth(&trm->scr, 0x10003, 0x9000 | 'L') ;
-  pm_dev_scr_sth(&trm->scr, 0x10004, 0x9000 | 'E') ;
-  pm_dev_scr_sth(&trm->scr, 0x10005, 0x9000 | 'D') ;
-*/
+  _sdl_trm_put_str(trm, "AT ") ;
+  _dump_hex(trm, 0xF, 0x0, adr) ;
+  _sdl_trm_put_str(trm, " ") ;
+
+  fprintf(stderr, "[BOOT] 0x%08X", adr) ;
+  u_word_t mag = pm_bus_ldw(bus, adr) ;
+  fprintf(stderr, " [BOOT]\n") ;
+
+  _dump_hex(trm, 0xB, 0x0, mag) ;
+
+  if (exp == mag) {
+    _sdl_trm_put_str(trm, "\r[") ;
+    _sdl_trm_put_col_str(trm, 0xA, 0x0, " PASSED ") ;
+    _sdl_trm_put_str(trm, "]\n\r") ;
+
+    for (int idx = 0 ; idx < 512 ; ++idx) {
+      u_byte_t val = pm_bus_ldb(bus, adr + idx) ;
+      pm_bus_stb(bus, 0x80000000 + idx, val) ;
+    }
+
+    pm_bus_stw(bus, 0x80000000, 0x00000000) ;
+  } else {
+    _sdl_trm_put_str(trm, "\r[") ;
+    _sdl_trm_put_col_str(trm, 0x9, 0x0, " FAILED ") ;
+    _sdl_trm_put_str(trm, "]\n\r") ;
+
+    adr += 0x200 ;
+  }
+
+  return exp != mag ;
+}
+
+static void _dump_cpu (struct pm_cpu_t * cpu, struct sdl_trm_t * trm)
+{
+  static struct pm_cpu_t lst ;
+  static int init = 0 ;
+
+  if (init == 0) {
+    lst = *cpu ;
+    init = 1 ;
+  }
+
+#define DEF 0x8
+#define CHG 0xB
+
+  pm_dev_scr_stb(&trm->scr, 0xF4, 0x00) ;
+
+  _sdl_trm_put_col_str(trm, 0xF, 0x0, " PC0   : ") ;
+  _dump_hex(trm, cpu->pc0 == lst.pc0 ? DEF : CHG, 0x0, cpu->pc0) ;
+  _sdl_trm_put_col_str(trm, 0xF, 0x0, "  PC1   : ") ;
+  _dump_hex(trm, cpu->pc1 == lst.pc1 ? DEF : CHG, 0x0, cpu->pc1) ;
+  _sdl_trm_put_col_str(trm, 0xF, 0x0, "  INS   : ") ;
+  _dump_hex(trm, cpu->ins == lst.ins ? DEF : CHG, 0x0, cpu->ins) ;
+  _sdl_trm_put_str(trm, "\n\r") ;
+  _sdl_trm_put_col_str(trm, 0xF, 0x0, " CK0   : ") ;
+  _dump_hex(trm, cpu->ck0 == lst.ck0 ? DEF : CHG, 0x0, cpu->ck0) ;
+  _sdl_trm_put_col_str(trm, 0xF, 0x0, "  CK1   : ") ;
+  _dump_hex(trm, cpu->ck1 == lst.ck1 ? DEF : CHG, 0x0, cpu->ck1) ;
+  _sdl_trm_put_str(trm, "\n\r") ;
+
+  for (int idx = 0 ; idx < 0x10 ; ++idx) {
+    _sdl_trm_put_col_str(trm, 0xF, 0x0, " XPR") ;
+    _dump_dec(trm, 0xF, 0x0, idx) ;
+    if (idx <= 0x9) {
+      _sdl_trm_put_col_str(trm, 0xF, 0x0, "  : ") ;
+    } else {
+      _sdl_trm_put_col_str(trm, 0xF, 0x0, " : ") ;
+    }
+    _dump_hex(trm, cpu->xpr[idx] == lst.xpr[idx] ? DEF : CHG, 0x0, cpu->xpr[idx]) ;
+
+    _sdl_trm_put_col_str(trm, 0xF, 0x0, "  XPR") ;
+    _dump_dec(trm, 0xF, 0x0, 0x10 + idx) ;
+    _sdl_trm_put_col_str(trm, 0xF, 0x0, " : ") ;
+    _dump_hex(trm, cpu->xpr[0x10 + idx] == lst.xpr[0x10 + idx] ? DEF : CHG, 0x0, cpu->xpr[0x10 + idx]) ;
+
+    _sdl_trm_put_col_str(trm, 0xF, 0x0, "  CSR") ;
+    _dump_dec(trm, 0xF, 0x0, idx) ;
+    if (idx <= 0x9) {
+      _sdl_trm_put_col_str(trm, 0xF, 0x0, "  : ") ;
+    } else {
+      _sdl_trm_put_col_str(trm, 0xF, 0x0, " : ") ;
+    }
+    _dump_hex(trm, cpu->csr[idx] == lst.csr[idx] ? DEF : CHG, 0x0, cpu->csr[idx]) ;
+
+    _sdl_trm_put_col_str(trm, 0xF, 0x0, "  CSR") ;
+    _dump_dec(trm, 0xF, 0x0, 0x10 + idx) ;
+    _sdl_trm_put_col_str(trm, 0xF, 0x0, " : ") ;
+    _dump_hex(trm, cpu->csr[0x10 + idx] == lst.csr[0x10 + idx] ? DEF : CHG, 0x0, cpu->csr[0x10 + idx]) ;
+
+    _sdl_trm_put_str(trm, "\n\r") ;
+  }
+
+  lst = *cpu ;
 }
 
 int main (int argc, char ** argv)
@@ -101,6 +199,8 @@ int main (int argc, char ** argv)
   int      cdromc       = 0         ;
   char *   hdds   [ 4 ] = { NULL, NULL, NULL, NULL } ;
   int      hddc         = 0         ;
+  u_word_t cdromo [ 2 ] = { __PM_ENDIAN } ;
+  u_word_t hddo   [ 4 ] = { __PM_ENDIAN } ;
   u_word_t mem_len      = 0x2000000 ;
   int      arg_ofs      = -1        ;
 
@@ -113,14 +213,14 @@ int main (int argc, char ** argv)
         "usage: %s [options]\n"
         "usage: %s --help|-h\n"
         "options:\n"
-        "  -h, --help    : print this message.\n"
-        "  -v, --ver     : print the version.\n"
-        "  -m, --mem NUM : set NUM as the memory length.\n"
-        "  -a, --arg ... : ... are passed as arguments to\n"
-        "                  the machine through a special\n"
-        "                  device.\n"
-        "  --cdrom=STR   : attach a read-only memory.\n"
-        "  --hdd=STR     : attach a read-write memory.\n" ,
+        "  -h, --help          : print this message.\n"
+        "  -v, --ver           : print the version.\n"
+        "  -m, --mem NUM       : set NUM as the memory length.\n"
+        "  -a, --arg ...       : ... are passed as arguments to\n"
+        "                        the machine through a special\n"
+        "                        device.\n"
+        "  --cdrom=PATH:ENDIAN : attach a read-only memory.\n"
+        "  --hdd=PATH:ENDIAN   : attach a read-write memory.\n" ,
         argv[0] ,
         argv[0]
       ) ;
@@ -202,21 +302,51 @@ _read_mem_len :
           return EXIT_FAILURE ;
         }
 
-        cdroms[cdromc++] = args ;
+        cdroms[cdromc] = args ;
       } else {
         if (hddc == sizeof(hdds) / sizeof(hdds[0])) {
           fprintf(stderr, "error: too many hard-disks has been attached\n") ;
           return EXIT_FAILURE ;
         }
 
-        hdds[hddc++] = args ;
+        hdds[hddc] = args ;
       }
 
-      while (quote != *args && '\0' != *args) {
-        ++args ;
+      int order = __PM_ENDIAN ;
+
+      if (quote != '\0') {
+        while (quote != *args && '\0' != *args) {
+          ++args ;
+        }
+
+        if (':' == *args) {
+          if (0 == strcmp(args + 1, "be")) {
+            order = __PM_ENDIAN_BE ;
+          } else if (0 == strcmp(args + 1, "le")) {
+            order = __PM_ENDIAN_LE ;
+          }
+        }
+      } else {
+        while (':' != *args && '\0' != *args) {
+          ++args ;
+        }
+
+        if (':' == *args) {
+          if (0 == strcmp(args + 1, "be")) {
+            order = __PM_ENDIAN_BE ;
+          } else if (0 == strcmp(args + 1, "le")) {
+            order = __PM_ENDIAN_LE ;
+          }
+        }
       }
 
       *args = '\0' ;
+
+      if (0 != is_cdrom) {
+        cdromo[cdromc++] = order ;
+      } else {
+        hddo[hddc++] = order ;
+      }
     }
   }
 
@@ -233,10 +363,6 @@ _read_mem_len :
     }
 
     fseek(fp, 0, SEEK_SET) ;
-    fputc(0x45, fp) ;
-    fputc(0x70, fp) ;
-    fputc(0xFE, fp) ;
-    fputc(0xED, fp) ;
 
     for (int idx = arg_ofs ; idx < argc ; ++idx) {
       char * arg = argv[idx] ;
@@ -285,14 +411,16 @@ _read_mem_len :
     dsk[idx].fp = NULL ;
 
     if (1 <= idx && idx <= 2) {
-      dsk[idx].fn = cdroms[idx - 1] ;
+      dsk[idx].fn      = cdroms[idx - 1] ;
       dsk[idx].dev.stb = NULL ;
       dsk[idx].dev.sth = NULL ;
-      dsk[idx].dev.stw = NULL ;
+      dsk[idx].bo      = cdromo[idx - 1] ;
     } else if (3 <= idx && idx <= 6) {
       dsk[idx].fn = hdds[idx - 3] ;
+      dsk[idx].bo = hddo[idx - 3] ;
     } else {
       dsk[idx].fn = "args" ;
+      dsk[idx].bo = __PM_ENDIAN ;
     }
   }
 
@@ -338,16 +466,25 @@ _read_mem_len :
 
   pm_bus_rst(&bus, -1) ;
 
-  for (unsigned int i = 0 ; 1 ; ++i) {
-    if (i == 100) {
-      _boot(&bus, &trm, 0x4570FEED) ;
-    }
+  for (int err = 1 ; err > 0 ;) {
+    err = _boot(&bus, &trm, 0x4570FEED) ;
 
-//    fprintf(stderr, "clock %u / halt %u\n", bus.cpu.ck0, bus.hlt) ;
-    pm_bus_clk(&bus) ;
     sdl_trm_clk(&trm) ;
 
-    if (0 != trm.quit || 0 != bus.hlt)
+    if (0 != trm.quit)
+      break ;
+  }
+
+  for (;;) {
+    if (4 == trm.quit) {
+      pm_bus_clk(&bus) ;
+      _dump_cpu(&bus.cpu, &trm) ;
+      trm.quit = 0 ;
+    }
+
+    sdl_trm_clk(&trm) ;
+
+    if ((0 != trm.quit && 4 != trm.quit) || 0 != bus.hlt)
       break ;
   }
 
@@ -371,16 +508,6 @@ void dev_fnt8x16_rst (struct dev_fnt8x16_t * fnt)
   } ;
 
   memcpy(fnt->buf, fnt8x16, sizeof(fnt8x16)) ;
-
-/*
-  for (int i = 0 ; i < 0x100 ; ++i) {
-    fprintf(stderr, "%c |", (' ' <= i && i <= '~') ? i : '?') ;
-    for (int j = 0 ; j < 0x10 ; ++j) {
-      fprintf(stderr, " %02X", fnt->buf[i * 0x10 + j]) ;
-    }
-    fprintf(stderr, "\n") ;
-  }
-*/
 }
 
 void dev_fnt8x16_stb (struct dev_fnt8x16_t * fnt, u_word_t adr, u_byte_t dat)
@@ -490,111 +617,18 @@ void sdl_trm_clk (struct sdl_trm_t * trm)
     } break ;
 
     case SDL_KEYDOWN : {
-      SDL_Keycode cod = event.key.keysym.sym ;
-
-      if (cod == SDLK_UP) {
-        if (0 != trm->scr.cur_y) {
-          --trm->scr.cur_y ;
-          trm->scr.edit = 1 ;
-        }
+      if (event.key.keysym.sym == SDLK_UP) {
+        trm->quit = 4 ;
       }
 
-      if (cod == SDLK_DOWN) {
-        if (trm->scr.cur_y < trm->scr.len_y - 1) {
-          ++trm->scr.cur_y ;
-          trm->scr.edit = 1 ;
-        }
-      }
-
-      if (cod == SDLK_LEFT) {
-        if (0 != trm->scr.cur_x) {
-          --trm->scr.cur_x ;
-          trm->scr.edit = 1 ;
-        }
-      }
-
-      if (cod == SDLK_RIGHT) {
-        if (trm->scr.cur_x < trm->scr.len_x - 1) {
-          ++trm->scr.cur_x ;
-          trm->scr.edit = 1 ;
-        }
-      }
-
-
-
-
-
-
-      SDL_Keymod  mod = SDL_GetModState() ;
-
-      u_byte_t ctrl = 0, alt = 0, shift = 0 ;
-
-      if (0 != (mod & KMOD_LCTRL)) {
-        ++ctrl ;
-      }
-      
-      if (0 != (mod & KMOD_RCTRL)) {
-        ++ctrl ;
-      }
-
-      if (0 != (mod & KMOD_LALT)) { 
-        ++alt ;
-      }
-
-      if (0 != (mod & KMOD_RALT)) {
-        ++alt ;
-      }
-
-      if (0 != (mod & KMOD_LSHIFT)) {
-        ++shift ;
-      }
-
-      if (0 != (mod & KMOD_RSHIFT)) {
-        ++shift ;
-      }
-
-      if (0 != ctrl) {
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)0x1D) ;
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)ctrl) ;
-      }
-
-      if (0 != alt) {
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)0x1E) ;
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)alt) ;
-      }
-
-      if (0 != shift) {
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)0x1F) ;
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)shift) ;
-      }
-
-      const char * nam = SDL_GetKeyName(cod) ;
-
-      if (1 == strlen(nam)) {
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)nam[0]) ;
-      } else if (SDLK_ESCAPE == cod) {
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)0x1B) ;
-      } else if (SDLK_TAB == cod) {
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)0x09) ;
-      } else if (SDLK_RETURN == cod) {
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)0x0A) ;
-      } else if (SDLK_DELETE == cod) {
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)0x7F) ;
-      } else if (SDLK_BACKSPACE == cod) {
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)0x07) ;
-      } else {
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)0xFF) ;
-      }
+      u_byte_t key = event.key.keysym.scancode ;
+      pm_dev_kbr_enq(&trm->kbr, key) ;
     } break ;
 
-    case SDL_TEXTINPUT : {
-      const char * txt = event.text.text ;
-
-      _sdl_trm_put_str(trm, txt) ;
-
-      for (int idx = 0 ; 0 != txt[idx] ; ++idx) {
-        pm_dev_kbr_enq(&trm->kbr, (u_byte_t)txt[idx]) ;
-      }
+    case SDL_KEYUP : {
+      u_byte_t key = event.key.keysym.scancode ;
+      pm_dev_kbr_enq(&trm->kbr, 0xFF) ;
+      pm_dev_kbr_enq(&trm->kbr, key) ;
     } break ;
     }
   }
@@ -628,8 +662,8 @@ void sdl_trm_clk (struct sdl_trm_t * trm)
 static int _sdl_trm_put_col_chr (struct sdl_trm_t * trm, int fg, int bg, char chr)
 {
   if (chr == '\t') {
-    int tab0 = _sdl_trm_put_chr(trm, ' ') ;
-    int tab1 = _sdl_trm_put_chr(trm, ' ') ;
+    int tab0 = _sdl_trm_put_col_chr(trm, fg, bg, ' ') ;
+    int tab1 = _sdl_trm_put_col_chr(trm, fg, bg, ' ') ;
 
     if (tab0 < 0)
       return tab0 ;
@@ -644,6 +678,8 @@ static int _sdl_trm_put_col_chr (struct sdl_trm_t * trm, int fg, int bg, char ch
     if (trm->scr.cur_y < trm->scr.len_y - 1) {
       ++trm->scr.cur_y ;
       trm->scr.edit = 1 ;
+    } else {
+      pm_dev_scr_stb(&trm->scr, 0xF0, 1) ;
     }
 
     return 1 ;
