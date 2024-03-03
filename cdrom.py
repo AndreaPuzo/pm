@@ -7,6 +7,7 @@ build    = False
 dump     = False
 noise    = False
 bootable = False
+program  = None
 filename = ''
 
 skip = 0
@@ -26,6 +27,7 @@ for argi in range(1, len(sys.argv)):
             '  -n, --noise   : random image content.\n'
             '  -b, --build   : build the image.\n'
             '  -t, --boot    : bootable image.\n'
+            '  -p, --prog    : insert the program.\n'
             % sys.argv[0]
         )
         os._exit(0)
@@ -44,6 +46,19 @@ for argi in range(1, len(sys.argv)):
         noise = True
     elif args == '-t' or args == '--boot':
         bootable = True
+    elif args == '-p' or args == '--prog':
+        noise = True
+        prog = b'\x00\x50\x00\x20' + \
+               b'\x80\x00\x88\x4E' + \
+               b'\x01\x00\x08\x4E' + \
+               b'\x00\x40\x00\x31' + \
+               b'\x00\x01\x88\x3D' + \
+               b'\xFF\xF0\x04\x20' + \
+               b'\x00\x40\x08\x40' + \
+               b'\xFF\xFB\x80\x0F' + \
+               b'\x04\x09\x80\x1E'
+        print('Program:')
+        print(prog)
     else:
         filename = args
 
@@ -54,13 +69,19 @@ if filename is None:
 if build is True:
     print('Building... ', end = '')
     with open(filename, 'wb') as file:
+        index = 0
         for sector in range(sectors):
             for offset in range(0, 512, 4):
                 if noise is True:
                     if bootable is True and sector == 0 and offset == 0:
                         file.write(b'\x45\x70\xFE\xED')
                     else:
-                        file.write(b'%c%c%c%c' % (random.randint(0x00, 0xFF), random.randint(0x00, 0xFF), random.randint(0x00, 0xFF), random.randint(0x00, 0xFF)))
+                        if prog is None or index >= len(prog):
+                            file.write(b'%c%c%c%c' % (random.randint(0x00, 0xFF), random.randint(0x00, 0xFF), random.randint(0x00, 0xFF), random.randint(0x00, 0xFF)))
+                        else:
+                            print("Writing... %s" % prog[index:index + 4])
+                            file.write(prog[index:index + 4])
+                            index += 4
                 else:
                     if bootable is True and sector == 0 and offset == 0:
                         file.write(b'\x45\x70\xFE\xED')

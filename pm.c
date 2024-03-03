@@ -295,8 +295,15 @@ void pm_cpu_clk (struct pm_cpu_t * cpu)
   case 0x0F : {
     s = (s << 4) | (c >> 1) ;
 
-    cpu->xpr[a] = cpu->pc0 ;
-    cpu->pc0 = (c & 0x1) * cpu->pc0 + (cpu->xpr[b] + s) * sizeof(u_word_t) ;
+    u_word_t la = cpu->pc0 ;
+    
+    if (0 == (c & 0x1)) {
+      cpu->pc0  = cpu->xpr[b] + (s * sizeof(u_word_t)) ;
+    } else {
+      cpu->pc0 += (cpu->xpr[b] + s) * sizeof(u_word_t) ;
+    }
+
+    cpu->xpr[a] = la ;
   } break ;
 
   case 0x10 : {
@@ -476,7 +483,7 @@ void pm_cpu_clk (struct pm_cpu_t * cpu)
     case 0x12 : {
       u_word_t msk = (u >> 4) & 0xF ; 
       u_word_t shf = (u >> 0) & 0x7 ;
-      cpu->xpr[b] = (_cpu_ldcsr(cpu, a) >> (4 * shf)) & msk ;
+      cpu->xpr[b]  = _cpu_gecsr(cpu, a, msk, 4 * shf) ;
     } break ;
 
     case 0x13 : {
@@ -491,7 +498,7 @@ void pm_cpu_clk (struct pm_cpu_t * cpu)
         break ;
       }
 
-      _cpu_stcsr(cpu, a, ((cpu->xpr[b] | val) & msk) << (4 * shf)) ;
+      _cpu_secsr(cpu, a, cpu->xpr[b] | val, msk, 4 * shf) ;
     } break ;
 
     case 0x14 : {
@@ -692,15 +699,6 @@ static u_word_t _cpu_plw (struct pm_cpu_t * cpu, u_word_t * sp)
 
 static void _cpu_stcsr (struct pm_cpu_t * cpu, int idx, u_word_t dat)
 {
-/*
-  int pl    = _cpu_pl_get() ;
-  int plcsr = (idx >> 3) & 0x3 ;
-
-  if (plcsr < pl || 0x3 == pl) {
-    pm_cpu_int(cpu, PM_INT_PP) ;
-    return ;
-  }
-*/
   cpu->csr[idx & 0x1F] = dat ;
 }
 

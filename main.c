@@ -23,7 +23,7 @@ u_byte_t dev_fnt8x16_ldb (struct dev_fnt8x16_t * fnt, u_word_t adr) ;
 struct sdl_trm_t {
   SDL_Window *   window    ;
   SDL_Renderer * renderer  ;
-  int            quit      ;
+  int            status    ;
   u_byte_t       rows      ;
   u_byte_t       cols      ;
 
@@ -42,7 +42,7 @@ static void _sdl_trm_render_chr (struct sdl_trm_t * trm, u_byte_t ofs_x, u_byte_
 
 int  sdl_trm_ctor (struct sdl_trm_t * trm) ;
 void sdl_trm_dtor (struct sdl_trm_t * trm) ;
-void sdl_trm_clk  (struct sdl_trm_t * trm) ;
+void sdl_trm_clk  (struct sdl_trm_t * trm, struct pm_bus_t * bus) ;
 
 static void _dump_dec (struct sdl_trm_t * trm, int fg, int bg, int val)
 {
@@ -104,9 +104,9 @@ static int _boot (struct pm_bus_t * bus, struct sdl_trm_t * trm, u_word_t exp)
   _dump_hex(trm, 0xF, 0x0, adr) ;
   _sdl_trm_put_str(trm, " ") ;
 
-  fprintf(stderr, "[BOOT] 0x%08X", adr) ;
+  fprintf(stderr, "[ BOOTING AT 0x%08X ", adr) ;
   u_word_t mag = pm_bus_ldw(bus, adr) ;
-  fprintf(stderr, " [BOOT]\n") ;
+  fprintf(stderr, "0x%08X ]\n", mag) ;
 
   _dump_hex(trm, 0xB, 0x0, mag) ;
 
@@ -469,36 +469,49 @@ _read_mem_len :
   pm_bus_rst(&bus, -1) ;
 
   for (int err = 1 ; err > 0 ;) {
+    trm.rows = trm.scr.len_y ;
+    trm.cols = trm.scr.len_x ;
+
     err = _boot(&bus, &trm, 0x4570FEED) ;
 
-    sdl_trm_clk(&trm) ;
+    sdl_trm_clk(&trm, &bus) ;
 
-    if (0 != trm.quit)
+    if (0 == trm.status)
       break ;
   }
 
-  for (int i = 1 ; i > 0 ; i += 1) {
+  int halt_i = 0 ;
+  for (int i = 1 ; i > 0 ; ++i) {
     trm.rows = trm.scr.len_y ;
     trm.cols = trm.scr.len_x ;
-    fprintf(stderr, "\rclock %d : %u;%u ", i, trm.rows, trm.cols) ;
 
-    if (4 == trm.quit) {
+    if (trm.status & (1 << 2)) {
       pm_bus_clk(&bus) ;
       _dump_cpu(&bus.cpu, &trm) ;
-      trm.quit = 0 ;
+
+      if (trm.status & (1 << 1)) {
+        trm.status ^= (1 << 2) ;
+      }
     }
 
-    if (i == 1000) {
-      fprintf(stderr, "terminal has been changed.\n") ;
-      trm.scr.len_y = 32  ;
-      trm.scr.len_x = 128 ;
-      trm.scr.edit  = 1   ;
-    }
+    sdl_trm_clk(&trm, &bus) ;
 
-    sdl_trm_clk(&trm) ;
-
-    if ((0 != trm.quit && 4 != trm.quit) || 0 != bus.hlt)
+    if (0 == trm.status)
       break ;
+
+    if (0 != bus.hlt) {
+      trm.status = 1 ;
+
+      if (halt_i == 0) {
+        halt_i = i ;
+      }
+
+      pm_dev_scr_stb(&trm.scr, 0xF4, 0x00) ;
+      _sdl_trm_put_str(&trm, "[") ;
+      _sdl_trm_put_col_str(&trm, 0x6, 0x0, " HALTED ") ;
+      _sdl_trm_put_str(&trm, "] ") ;
+      _dump_dec(&trm, 0x6, 0x0, i - halt_i) ;
+    }
   }
 
 success:
@@ -544,6 +557,9 @@ int sdl_trm_ctor (struct sdl_trm_t * trm)
 
   trm->scr.len_x = 80 ;
   trm->scr.len_y = 25 ;
+  trm->rows      =  0 ;
+  trm->cols      =  0 ;
+  trm->status    =  1 ;
 
   trm->window = SDL_CreateWindow(
     "Pocket Machine"       ,
@@ -619,19 +635,70 @@ void sdl_trm_dtor (struct sdl_trm_t * trm)
   SDL_Quit() ;
 }
 
-void sdl_trm_clk (struct sdl_trm_t * trm)
+void sdl_trm_clk (struct sdl_trm_t * trm, struct pm_bus_t * bus)
 {
   SDL_Event event ;
 
   while (SDL_PollEvent(&event)) {
     switch (event.type) {
     case SDL_QUIT : {
-      trm->quit = 1 ;
+      trm->status = 0 ;
     } break ;
 
     case SDL_KEYDOWN : {
       if (event.key.keysym.sym == SDLK_SPACE) {
-        trm->quit = 4 ;
+        if (event.key.keysym.mod & KMOD_CTRL) {
+          trm->status ^= 1 << 2 ;
+          trm->status &= ~(1 << 1) ;
+        } else {
+          trm->status |= 1 << 1 ;
+          trm->status |= 1 << 2 ;
+        }
+      } else if (event.key.keysym.sym == SDLK_g) {
+        u_word_t adr ;
+        char     typ ;
+
+        fprintf(stderr, "GET _\b") ;
+        fscanf(stdin, "%c AT 0x%x", &typ, &adr) ;
+        int c ; while ((c = getchar()) != '\n' && c != EOF) ;
+        fprintf(stderr, "[ 0x%08X ] ", adr) ;
+
+        if (typ == 'B') {
+          u_byte_t dat = pm_bus_ldb(bus, adr) ;
+          fprintf(stderr, " 0x%02X\n", dat) ;
+        } else if (typ == 'H') {
+          u_half_t dat = pm_bus_ldh(bus, adr) ;
+          fprintf(stderr, " 0x%04X\n", dat) ;
+        } else {
+          u_word_t dat = pm_bus_ldw(bus, adr) ;
+          fprintf(stderr, " 0x%08X\n", dat) ;
+        }
+      } else if (event.key.keysym.sym == SDLK_p) {
+        u_word_t adr ;
+        u_word_t val ;
+        char     typ ;
+
+        fprintf(stderr, "PUT _\b") ;
+        fscanf(stdin, "%c AT 0x%x 0x%x", &typ, &adr, &val) ;
+        int c ; while ((c = getchar()) != '\n' && c != EOF) ;
+        fprintf(stderr, "[ 0x%08X ] %u 0x%08X > ", adr, typ, val) ;
+
+        if (typ == 'B') {
+          u_byte_t dat = (u_byte_t)val ;
+          pm_bus_stb(bus, adr, dat) ;
+          dat = pm_bus_ldb(bus, adr) ;
+          fprintf(stderr, " 0x%02X\n", dat) ;
+        } else if (typ == 'H') {
+          u_half_t dat = (u_half_t)val ;
+          pm_bus_sth(bus, adr, dat) ;
+          dat = pm_bus_ldh(bus, adr) ;
+          fprintf(stderr, " 0x%04X\n", dat) ;
+        } else {
+          u_word_t dat = (u_word_t)val ;
+          pm_bus_stw(bus, adr, dat) ;
+          dat = pm_bus_ldw(bus, adr) ;
+          fprintf(stderr, " 0x%08X\n", dat) ;
+        }
       }
 
       u_byte_t key = event.key.keysym.scancode ;
