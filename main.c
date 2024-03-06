@@ -720,6 +720,9 @@ void sdl_trm_clk (struct sdl_trm_t * trm, struct pm_bus_t * bus)
           dat = pm_bus_ldw(bus, adr) ;
           fprintf(stderr, " 0x%08X\n", dat) ;
         }
+      } else if (event.key.keysym.sym == SDLK_r) {
+        fprintf(stderr, "RESET...\n") ;
+        pm_bus_rst(bus, -1) ;
       }
 
       u_byte_t key = event.key.keysym.scancode ;
