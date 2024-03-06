@@ -174,11 +174,27 @@ int      pm_iom_umn  (struct pm_iom_t * iom, struct pm_dev_t * dev) ;
 
 /* omniBUS */
 
+struct pm_bus_rst_t {
+  u_word_t adr_min ;
+  u_word_t adr_max ;
+  u_word_t adr_cur ;
+  u_word_t adr_eps ;
+  u_word_t dst_adr ;
+  u_word_t dst_siz ;
+  u_word_t mag     ;
+  void *   ptr     ;
+  int      rdy     ;
+} ;
+
+typedef int ( * pm_bus_boot_t ) (struct pm_bus_t * bus, struct pm_bus_rst_t * rst) ;
+
 struct pm_bus_t {
-  int             hlt ;
-  struct pm_cpu_t cpu ;
-  struct pm_ram_t ram ;
-  struct pm_iom_t iom ;
+  int                 hlt  ;
+  struct pm_bus_rst_t rst  ;
+  pm_bus_boot_t       boot ;
+  struct pm_cpu_t     cpu  ;
+  struct pm_ram_t     ram  ;
+  struct pm_iom_t     iom  ;
 } ;
 
 int      pm_bus_ctor (struct pm_bus_t * bus, u_word_t len) ;

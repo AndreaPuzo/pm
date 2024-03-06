@@ -87,49 +87,56 @@ static void _dump_hex (struct sdl_trm_t * trm, int fg, int bg, u_word_t val)
   _sdl_trm_put_col_str(trm, fg, bg, str) ;
 }
 
-static int _boot (struct pm_bus_t * bus, struct sdl_trm_t * trm, u_word_t exp)
+static int _boot (struct pm_bus_t * bus, struct pm_bus_rst_t * rst)
 {
-  static u_word_t adr = 0x20000000 ;
+  struct sdl_trm_t * trm = rst->ptr ;
 
   _sdl_trm_put_str(trm, "\r[") ;
   _sdl_trm_put_col_str(trm, 0xB, 0x0, " ------ ") ;
   _sdl_trm_put_str(trm, "] BOOTING ") ;
-
-  if (0x80000000 <= adr) {
+  
+  if (rst->adr_max <= rst->adr_cur) {
     _sdl_trm_put_col_str(trm, 0x9, 0x0, "\rNO BOOTLOADER HAS BEEN FOUND") ;
+    bus->hlt = 1 ;
     return -1 ;
   }
+
+  u_word_t adr = rst->adr_cur ;
 
   _sdl_trm_put_str(trm, "AT ") ;
   _dump_hex(trm, 0xF, 0x0, adr) ;
   _sdl_trm_put_str(trm, " ") ;
 
-  fprintf(stderr, "[ BOOTING AT 0x%08X ", adr) ;
+  // fprintf(stderr, "[ BOOTING AT 0x%08X ", adr) ;
   u_word_t mag = pm_bus_ldw(bus, adr) ;
-  fprintf(stderr, "0x%08X ]\n", mag) ;
+  // fprintf(stderr, "0x%08X ]\n", mag) ;
 
   _dump_hex(trm, 0xB, 0x0, mag) ;
 
-  if (exp == mag) {
+  if (rst->mag == mag) {
     _sdl_trm_put_str(trm, "\r[") ;
     _sdl_trm_put_col_str(trm, 0xA, 0x0, " PASSED ") ;
     _sdl_trm_put_str(trm, "]\n\r") ;
 
-    for (int idx = 0 ; idx < 512 ; ++idx) {
-      u_byte_t val = pm_bus_ldb(bus, adr + idx) ;
-      pm_bus_stb(bus, 0x80000000 + idx, val) ;
+    for (int idx = 0 ; idx < rst->dst_siz ; ++idx) {
+      u_byte_t dat = pm_bus_ldb(bus, adr + idx) ;
+      pm_bus_stb(bus, rst->dst_adr + idx, dat) ;
     }
 
-    pm_bus_stw(bus, 0x80000000, 0x00000000) ;
+    pm_bus_stw(bus, rst->dst_adr, 0x00000000) ;
+
+    adr = rst->adr_min ;
   } else {
     _sdl_trm_put_str(trm, "\r[") ;
     _sdl_trm_put_col_str(trm, 0x9, 0x0, " FAILED ") ;
     _sdl_trm_put_str(trm, "]\n\r") ;
 
-    adr += 0x200 ;
+    adr += rst->dst_siz ;
   }
 
-  return exp != mag ;
+  rst->adr_cur = adr ;
+
+  return rst->mag != mag ;
 }
 
 static void _dump_cpu (struct pm_cpu_t * cpu, struct sdl_trm_t * trm)
@@ -466,8 +473,7 @@ _read_mem_len :
     goto failure ;
   }
 
-  pm_bus_rst(&bus, -1) ;
-
+  /*
   for (int err = 1 ; err > 0 ;) {
     trm.rows = trm.scr.len_y ;
     trm.cols = trm.scr.len_x ;
@@ -479,6 +485,18 @@ _read_mem_len :
     if (0 == trm.status)
       break ;
   }
+  */
+
+  bus.rst.adr_min = 0x20000000           ;
+  bus.rst.adr_max = 0x40000000           ;
+  bus.rst.adr_eps = 0x200                ;
+  bus.rst.dst_adr = 0x80000000           ;
+  bus.rst.dst_siz = bus.rst.adr_eps      ;
+  bus.rst.mag     = 0x4570FEED           ;
+  bus.rst.ptr     = (void *)&trm         ;
+  bus.boot        = (pm_bus_boot_t)_boot ;
+
+  pm_bus_rst(&bus, -1) ;
 
   int halt_i = 0 ;
   for (int i = 1 ; i > 0 ; ++i) {
@@ -487,7 +505,10 @@ _read_mem_len :
 
     if (trm.status & (1 << 2)) {
       pm_bus_clk(&bus) ;
-      _dump_cpu(&bus.cpu, &trm) ;
+
+      if (0 != bus.rst.rdy) {
+        _dump_cpu(&bus.cpu, &trm) ;
+      }
 
       if (trm.status & (1 << 1)) {
         trm.status ^= (1 << 2) ;

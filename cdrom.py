@@ -57,8 +57,6 @@ for argi in range(1, len(sys.argv)):
                b'\x00\x40\x08\x40' + \
                b'\xFF\xFB\x80\x0F' + \
                b'\x04\x09\x80\x1E'
-        print('Program:')
-        print(prog)
     else:
         filename = args
 
@@ -79,7 +77,6 @@ if build is True:
                         if prog is None or index >= len(prog):
                             file.write(b'%c%c%c%c' % (random.randint(0x00, 0xFF), random.randint(0x00, 0xFF), random.randint(0x00, 0xFF), random.randint(0x00, 0xFF)))
                         else:
-                            print("Writing... %s" % prog[index:index + 4])
                             file.write(prog[index:index + 4])
                             index += 4
                 else:

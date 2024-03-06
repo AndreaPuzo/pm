@@ -1281,20 +1281,27 @@ void pm_bus_int (struct pm_bus_t * bus, u_word_t irq)
 void pm_bus_rst (struct pm_bus_t * bus, int id)
 {
   bus->hlt = 0 ;
-  
+
   if (-1 == id) {
     pm_cpu_rst(&bus->cpu) ;
     pm_ram_rst(&bus->ram) ; 
   }
-  
+
   pm_iom_rst(&bus->iom, id) ;
+
+  bus->rst.adr_cur = bus->rst.adr_min ;
+  bus->rst.rdy     = 0 ;
 }
 
 void pm_bus_clk (struct pm_bus_t * bus)
 {
-  pm_cpu_clk(&bus->cpu) ;
-  pm_ram_clk(&bus->ram) ;
-  pm_iom_clk(&bus->iom) ;
+  if (0 == bus->rst.rdy) {
+    bus->rst.rdy = 0 == bus->boot(bus, &bus->rst) ;
+  } else {
+    pm_cpu_clk(&bus->cpu) ;
+    pm_ram_clk(&bus->ram) ;
+    pm_iom_clk(&bus->iom) ;
+  }
 }
 
 #define _st_fun(typ)                        \
