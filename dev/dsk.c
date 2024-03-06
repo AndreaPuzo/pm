@@ -381,6 +381,4 @@ static void _dev_dsk_ldsec (struct pm_dev_dsk_t * dsk)
     dsk->err = PM_DEV_DSK_ERR_RS ;
     return ;
   }
-
-  fprintf(stderr, "sector 0x%08X loaded from %s [0x%08X;0x%08X]\n", dsk->sec, dsk->fn, dsk->dev.adr, dsk->dev.adr + dsk->dev.len - 1) ;
 }
