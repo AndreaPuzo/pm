@@ -1,7 +1,7 @@
 #include "scr.h"
 #include <string.h>
 
-static void _dev_scr_clr          (struct pm_dev_scr_t * scr) ;
+static void _dev_scr_clr          (struct pm_dev_scr_t * scr, u_half_t chr) ;
 static void _dev_scr_ver_scroll_u (struct pm_dev_scr_t * scr, u_byte_t n) ;
 static void _dev_scr_ver_scroll_d (struct pm_dev_scr_t * scr, u_byte_t n) ;
 static void _dev_scr_hor_scroll_l (struct pm_dev_scr_t * scr, u_byte_t n) ;
@@ -33,7 +33,7 @@ void pm_dev_scr_rst (struct pm_dev_scr_t * scr)
   scr->pal[0xE] = 0x34E2E2FF ;
   scr->pal[0xF] = 0xFFFFFFFF ;
 
-  _dev_scr_clr(scr) ;
+  _dev_scr_clr(scr, 0xF020) ;
 
   pm_iom_int(scr->dev.bus, (struct pm_dev_t *)scr) ;
 }
@@ -112,7 +112,7 @@ void pm_dev_scr_stb (struct pm_dev_scr_t * scr, u_word_t adr, u_byte_t dat)
   } break ;
 
   case 0xF4 : {
-    _dev_scr_clr(scr) ;
+    _dev_scr_clr(scr, 0xF000 | dat) ;
   } break ;
 
   default : {
@@ -156,6 +156,10 @@ void pm_dev_scr_sth (struct pm_dev_scr_t * scr, u_word_t adr, u_half_t dat)
   case 0x8A : case 0x9A : case 0xAA : case 0xBA :
   case 0xCA : case 0xDA : case 0xEA : case 0xFA : {
     /* ignore */
+  } break ;
+
+  case 0xF4 : {
+    _dev_scr_clr(scr, dat) ;
   } break ;
 
   default : {
@@ -328,13 +332,13 @@ u_word_t pm_dev_scr_ldw (struct pm_dev_scr_t * scr, u_word_t adr)
   return dat ;
 }
 
-static void _dev_scr_clr (struct pm_dev_scr_t * scr)
+static void _dev_scr_clr (struct pm_dev_scr_t * scr, u_half_t chr)
 {
   scr->cur_x = 0 ;
   scr->cur_y = 0 ;
 
   for (int idx = 0 ; idx < 0x10000 ; ++idx) {
-    scr->buf[idx] = 0xF020 ;
+    scr->buf[idx] = chr ;
   }
 
   scr->edit = 1 ;
@@ -346,7 +350,7 @@ static void _dev_scr_ver_scroll_u (struct pm_dev_scr_t * scr, u_byte_t n)
     return ;
 
   if (scr->len_y == n) {
-    _dev_scr_clr(scr) ;
+    _dev_scr_clr(scr, 0xF020) ;
     return ;
   }
 
@@ -371,7 +375,7 @@ static void _dev_scr_ver_scroll_d (struct pm_dev_scr_t * scr, u_byte_t n)
     return ;
 
   if (scr->len_y == n) {
-    _dev_scr_clr(scr) ;
+    _dev_scr_clr(scr, 0xF020) ;
     return ;
   }
 
@@ -396,7 +400,7 @@ static void _dev_scr_hor_scroll_l (struct pm_dev_scr_t * scr, u_byte_t n)
     return ;
 
   if (scr->len_x == n) {
-    _dev_scr_clr(scr) ;
+    _dev_scr_clr(scr, 0xF020) ;
     return ;
   }
 
@@ -419,7 +423,7 @@ static void _dev_scr_hor_scroll_r (struct pm_dev_scr_t * scr, u_byte_t n)
     return ;
 
   if (scr->len_x == n) {
-    _dev_scr_clr(scr) ;
+    _dev_scr_clr(scr, 0xF020) ;
     return ;
   }
 
