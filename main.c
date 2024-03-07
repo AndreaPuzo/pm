@@ -487,9 +487,9 @@ _read_mem_len :
   }
   */
 
-  bus.rst.adr_min = 0x20000000           ;
-  bus.rst.adr_max = 0x40000000           ;
-  bus.rst.adr_eps = 0x200                ;
+  bus.rst.adr_min = 0x20000200           ;
+  bus.rst.adr_max = 0x20002000           ;
+  bus.rst.adr_eps = 0x400                ;
   bus.rst.dst_adr = 0x80000000           ;
   bus.rst.dst_siz = bus.rst.adr_eps      ;
   bus.rst.mag     = 0x4570FEED           ;
